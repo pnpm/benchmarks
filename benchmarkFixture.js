@@ -277,12 +277,12 @@ export default async function benchmark (pm, fixture, opts) {
 
     withWarmModules = measureInstall(pm, cwd, env)
 
-    size = await getFolderSize(modules).size
+    size = await getFolderSize.loose(modules)
   } else {
     withWarmCacheAndModules =
       withWarmModulesAndLockfile =
       withWarmModules = 0
-    size = await getFolderSize(path.join(cwd, 'cache')).size
+    size = await getFolderSize.loose(path.join(cwd, 'cache'))
   }
 
   console.log('# with updated dependencies')

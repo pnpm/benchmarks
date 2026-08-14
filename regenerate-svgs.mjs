@@ -158,14 +158,22 @@ const mainResArray = sortedTests.map(test => mainBars.map(bar => bar.stacked
 ))
 const mainSvg = generateSvg(mainResArray, mainBars, sortedDescriptions, formattedNow)
 
-const pnpmSortedTests = sortTestsBySlowest(tests, data, ['pnpm11'])
-const pnpmSortedDescriptions = pnpmSortedTests.map(t => testDescriptions[t])
-const stackedResults = pnpmSortedTests.map((test, i) => ({
-  label: pnpmSortedDescriptions[i],
-  v11: Math.round(data.pnpm11.results[test] / 100) / 10,
-  v12: Math.round(data.pnpm12.results[test] / 100) / 10,
-}))
-const pnpmSvg = generateStackedSvg(stackedResults, formattedNow)
+// The pnpm-against-pnpm chart needs both releases. Either one can be missing
+// here for the same reason a bar is missing above — added to the benchmark,
+// not yet run by CI — and that is no reason to leave the main chart unwritten.
+let pnpmSvg = null
+if (data.pnpm11 && data.pnpm12) {
+  const pnpmSortedTests = sortTestsBySlowest(tests, data, ['pnpm11'])
+  const pnpmSortedDescriptions = pnpmSortedTests.map(t => testDescriptions[t])
+  const stackedResults = pnpmSortedTests.map((test, i) => ({
+    label: pnpmSortedDescriptions[i],
+    v11: Math.round(data.pnpm11.results[test] / 100) / 10,
+    v12: Math.round(data.pnpm12.results[test] / 100) / 10,
+  }))
+  pnpmSvg = generateStackedSvg(stackedResults, formattedNow)
+} else {
+  console.warn('[regenerate-svgs] no results for pnpm 11 and pnpm 12 both; skipping alotta-files-pnpm.svg')
+}
 
 fs.mkdirSync(BENCH_IMGS, { recursive: true })
 const mainPath = path.join(BENCH_IMGS, 'alotta-files.svg')
@@ -176,7 +184,7 @@ const writeIfChanged = (file, content) => {
   return true
 }
 const mainChanged = writeIfChanged(mainPath, mainSvg)
-const pnpmChanged = writeIfChanged(pnpmPath, pnpmSvg)
+const pnpmChanged = pnpmSvg != null && writeIfChanged(pnpmPath, pnpmSvg)
 if (mainChanged || pnpmChanged) {
   console.log('[regenerate-svgs] wrote' + (mainChanged ? ' alotta-files.svg' : '') + (pnpmChanged ? ' alotta-files-pnpm.svg' : ''))
 }
@@ -188,9 +196,12 @@ const hash = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0,
 const mdPath = path.join(DIRNAME, 'benchmarks.md')
 if (fs.existsSync(mdPath)) {
   let md = fs.readFileSync(mdPath, 'utf8')
-  const patched = md
-    .replace(/(alotta-files\.svg\?v=)[0-9a-f]+/g, `$1${hash(mainSvg)}`)
-    .replace(/(alotta-files-pnpm\.svg\?v=)[0-9a-f]+/g, `$1${hash(pnpmSvg)}`)
+  let patched = md.replace(/(alotta-files\.svg\?v=)[0-9a-f]+/g, `$1${hash(mainSvg)}`)
+  // A chart that wasn't drawn keeps the hash of the one on disk, which is still
+  // what the page is serving.
+  if (pnpmSvg != null) {
+    patched = patched.replace(/(alotta-files-pnpm\.svg\?v=)[0-9a-f]+/g, `$1${hash(pnpmSvg)}`)
+  }
   if (patched !== md) {
     fs.writeFileSync(mdPath, patched)
     console.log('[regenerate-svgs] updated ?v= hashes in benchmarks.md')
