@@ -150,7 +150,7 @@ function removeInstallOutput (cwd, modules) {
 export default async function benchmark (pm, fixture, opts) {
   const cwd = path.join(TMP, pm.scenario, fixture)
   const env = createEnv(opts.managersDir)
-  if (pm.scenario === 'pnpm12') {
+  if (pm.rustEngine) {
     // pnpm 12's Rust engine uses the store layout at $PNPM_HOME/store, which lines
     // up with the cache/ directory the rest of the flow cleans between scenarios.
     env.PNPM_HOME = path.join(cwd, 'cache')

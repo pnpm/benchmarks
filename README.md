@@ -17,7 +17,7 @@ npm, pnpm, and Bun are installed from the registry by the benchmark itself. Yarn
 
 ## The registry the install benchmark runs against
 
-Every package manager installs through a [pnpr](https://pnpm.io/pnpr) registry of the benchmark's own rather than npmjs, and pnpm is measured a second time with dependency resolution offloaded to that server. `benchmarkRegistry.js` brings all of that up. pnpr is installed from the registry by the benchmark, like the package managers are, and needs no setup.
+Every package manager installs through a [pnpr](https://pnpm.io/pnpr) registry of the benchmark's own rather than npmjs, and pnpm 12 is measured a second time with dependency resolution offloaded to that server. `benchmarkRegistry.js` brings all of that up. pnpr is installed from the registry by the benchmark, like the package managers are, and needs no setup.
 
 Three things about it are worth knowing before changing it.
 
