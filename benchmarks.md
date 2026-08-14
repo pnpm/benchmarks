@@ -1,15 +1,15 @@
 # Benchmarks of JavaScript Package Managers
 
-**Last benchmarked at**: _Aug 14, 2026, 9:43 AM_ (_daily_ updated).
+**Last benchmarked at**: _Aug 14, 2026, 10:51 AM_ (_daily_ updated).
 
-This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v0.1.0-alpha.6) across an emulated 50ms round trip at 200 Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
+This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v0.1.0-alpha.6) across an emulated 50ms round trip at 200 Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
 
 About the setup:
 
 - **Every manager crosses the same link.** The round trip is applied to all of them, and to pnpm's resolution requests as well, so no client gets a cheaper connection than another.
 - **pnpr's cache is warmed before anything is timed**, so no manager pays to pull the fixture into the registry on behalf of the ones measured after it.
 - **Server-side resolution pays off when there is a graph to resolve.** Resolving one means walking it level by level, and each level costs a round trip, so the cost is roughly the depth of the graph times the latency. pnpr does that walk next to the registry and answers with the whole resolved lockfile at once, which is why the rows without a lockfile — and the row that changes dependencies — are the ones where it pulls ahead of plain pnpm.
-- **It costs a round trip when there is not.** pnpm asks the server on every install, including the ones where the lockfile is already up to date and there is nothing to work out. The server answers a question it has been asked before from its cache, in a few milliseconds — what the client pays for is the round trip and having the resolved lockfile streamed back, which plain pnpm never pays because it never asks. That is why the rows with a lockfile come out slightly behind plain pnpm instead of level with it.
+- **It costs a round trip when there is not.** pnpm asks the server on every install, including the ones where the lockfile is already up to date and there is nothing to work out. The server answers a question it has been asked before from its cache, in a few milliseconds — what the client pays for is the round trip and having the resolved lockfile streamed back, which plain pnpm never pays because it never asks. That is why the rows with a lockfile come out behind plain pnpm instead of level with it.
 - Tarballs are still fetched by the client, in parallel and directly, on every row.
 
 Each row's label lists which of `cache`, `lockfile`, and `node_modules` are warm/present before install runs. Quick mapping to the real world (ordered from slowest to fastest scenario):
@@ -30,17 +30,17 @@ The app's `package.json` [here](https://github.com/pnpm/benchmarks/blob/main/fix
 
 | action  | cache | lockfile | node_modules| npm | pnpm | [pnpm 🦀](https://github.com/pnpm/pacquet) | [pnpm + pnpr](https://pnpm.io/pnpr/install-acceleration) | Yarn | Yarn PnP | Bun |
 | ---     | ---   | ---      | ---         | --- | --- | --- | --- | --- | --- | --- |
-| install |   |   |   | 54.9s | 7.4s | 2s | 4.5s | 6.1s | 3.1s | 4.1s |
-| install | ✔ |   |   | 51.8s | 4s | 1.2s | 2.3s | 4.8s | 3s | 767ms |
-| install |   | ✔ |   | 10.6s | 6.1s | 2.3s | 4.5s | 3.8s | 954ms | 1.7s |
-| install | ✔ | ✔ |   | 7.2s | 2s | 711ms | 2.3s | 1.9s | 125ms | 744ms |
-| install | ✔ |   | ✔ | 1.4s | 452ms | 49ms | 479ms | 3.2s | n/a | 1.8s |
-| install |   |   | ✔ | 1.4s | 490ms | 50ms | 475ms | 6.3s | n/a | 3.4s |
-| install |   | ✔ | ✔ | 1s | 419ms | 60ms | 1.3s | 4.2s | n/a | 46ms |
-| install | ✔ | ✔ | ✔ | 1s | 403ms | 16ms | 349ms | 1.1s | n/a | 45ms |
-| update | n/a | n/a | n/a | 9.5s | 7.2s | 1.2s | 2.5s | 2.2s | 2.1s | 464ms |
+| install |   |   |   | 54.9s | 7.4s | 2s | 2.5s | 6.1s | 3.1s | 4.1s |
+| install | ✔ |   |   | 51.8s | 4s | 1.2s | 748ms | 4.8s | 3s | 767ms |
+| install |   | ✔ |   | 10.6s | 6.1s | 2.3s | 2.3s | 3.8s | 954ms | 1.7s |
+| install | ✔ | ✔ |   | 7.2s | 2s | 668ms | 731ms | 1.9s | 125ms | 744ms |
+| install | ✔ |   | ✔ | 1.4s | 452ms | 49ms | 168ms | 3.2s | n/a | 1.8s |
+| install |   |   | ✔ | 1.4s | 490ms | 50ms | 168ms | 6.3s | n/a | 3.4s |
+| install |   | ✔ | ✔ | 1s | 419ms | 60ms | 1.9s | 4.2s | n/a | 46ms |
+| install | ✔ | ✔ | ✔ | 1s | 403ms | 16ms | 229ms | 1.1s | n/a | 45ms |
+| update | n/a | n/a | n/a | 9.5s | 7.2s | 1.2s | 1.2s | 2.2s | 2.1s | 464ms |
 
-<img alt="Graph of the alotta-files results" src="/img/benchmarks/alotta-files.svg?v=016ebbd4" />
+<img alt="Graph of the alotta-files results" src="/img/benchmarks/alotta-files.svg?v=65105e03" />
 
 ### pnpm vs pnpm 🦀
 
@@ -51,14 +51,14 @@ pnpm v12 will use a new installation engine for fetching and linking written in 
 | install |   |   |   | 7.4s | 2s |
 | install |   | ✔ |   | 6.1s | 2.3s |
 | install | ✔ |   |   | 4s | 1.2s |
-| install | ✔ | ✔ |   | 2s | 711ms |
+| install | ✔ | ✔ |   | 2s | 668ms |
 | install |   |   | ✔ | 490ms | 50ms |
 | install | ✔ |   | ✔ | 452ms | 49ms |
 | install |   | ✔ | ✔ | 419ms | 60ms |
 | install | ✔ | ✔ | ✔ | 403ms | 16ms |
 | update | n/a | n/a | n/a | 7.2s | 1.2s |
 
-<img alt="Graph comparing pnpm versions on the alotta-files fixture" src="/img/benchmarks/alotta-files-pnpm.svg?v=28800d5a" />
+<img alt="Graph comparing pnpm versions on the alotta-files fixture" src="/img/benchmarks/alotta-files-pnpm.svg?v=20648177" />
 
 ## Node.js Version Management
 
@@ -70,7 +70,7 @@ pnpm installs and switches Node.js versions itself, so a separate version manage
 | install Node.js 24 that was installed before | 189ms | 2.4s | 2.2s |
 | run `node` in a project pinned to Node.js 22 | 7ms | 4ms | 81ms |
 
-<img alt="Graph comparing Node.js version managers on installing Node.js" src="/img/benchmarks/node-versions.svg?v=7b165dd6" />
+<img alt="Graph comparing Node.js version managers on installing Node.js" src="/img/benchmarks/node-versions.svg?v=46b06de2" />
 
 A few things to keep in mind when reading these numbers:
 
