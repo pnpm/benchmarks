@@ -1,42 +1,35 @@
 {
-  "name": "dependency-managers-benchmark",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "prebenchmark": "rimraf .tmp",
-    "benchmark": "node index",
-    "benchmark3": "pnpm run benchmark && pnpm run benchmark && pnpm run benchmark",
-    "lint": "standard index.js lib/**"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/zkochan/dependency-managers-benchmark.git"
-  },
-  "author": "Zoltan Kochan",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/zkochan/dependency-managers-benchmark/issues"
-  },
-  "homepage": "https://github.com/zkochan/dependency-managers-benchmark#readme",
-  "dependencies": {
-    "common-tags": "^1.3.1",
-    "cross-spawn": "^5.1.0",
-    "fs-extra": "^1.0.0",
-    "get-folder-size": "^1.0.0",
-    "load-yaml-file": "^0.1.0",
-    "mkdirp": "^0.5.1",
-    "npm": "^7.5.2",
-    "path-key": "^2.0.1",
-    "pnpm": "^5.16.0",
-    "pretty-bytes": "^4.0.2",
-    "pretty-ms": "^2.1.0",
-    "rimraf": "^2.5.4",
-    "thenify": "^3.2.1",
-    "write-yaml-file": "^1.0.0",
-    "yarn": "^1.22.10"
-  },
-  "devDependencies": {
-    "standard": "^10.0.2"
-  }
+    "name": "benchmarks-of-javascript-package-managers",
+    "private": true,
+    "type": "module",
+    "description": "Benchmarks of JavaScript package managers",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/pnpm/benchmarks.git"
+    },
+    "license": "MIT",
+    "scripts": {
+        "benchmark": "node ./index.js",
+        "regenerate-svgs": "node ./regenerate-svgs.mjs",
+        "test": "node --test latencyProxy.test.mjs"
+    },
+    "dependencies": {
+        "common-tags": "^1.8.2",
+        "cross-spawn": "^7.0.3",
+        "get-folder-size": "^3.1.0",
+        "load-json-file": "^7.0.1",
+        "load-yaml-file": "^1.0.0",
+        "path-key": "^4.0.0",
+        "pretty-bytes": "^6.0.0",
+        "pretty-ms": "^7.0.1",
+        "rimraf": "^4.0.0",
+        "tempy": "^2.0.0",
+        "thenify": "^3.3.1",
+        "touch": "^3.1.0",
+        "write-yaml-file": "^4.2.0"
+    },
+    "engines": {
+        "pnpm": "9 || 10 || 11"
+    },
+    "packageManager": "pnpm@11.8.0"
 }
