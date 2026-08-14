@@ -120,9 +120,12 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
       assertAlive()
     }
 
+    // Verified with the same client the accelerated scenario measures —
+    // pnpm 12 — so a release that stopped using the resolver is caught here,
+    // not discovered as a suspiciously plain-looking column later.
     verifyResolverIsUsed({
-      pm: withRegistry(cmdsMap.pnpm11, url),
-      managersDir: managersDirs.pnpm11,
+      pm: withRegistry(cmdsMap.pnpm_pnpr, url),
+      managersDir: managersDirs.pnpm12,
       dir,
       registry: url,
       authToken,

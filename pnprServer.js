@@ -245,9 +245,16 @@ export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToke
 
   const resolveCalls = () => (serverLog().match(/uri=\/-\/pnpr\/v0\/resolve/g) ?? []).length
   const before = resolveCalls()
+  const env = createEnv(managersDir)
+  if (pm.rustEngine) {
+    // Same store redirection the measured scenarios get: pnpm 12 keeps its
+    // store at $PNPM_HOME/store, and this one-off install should not write
+    // into the machine's real store.
+    env.PNPM_HOME = path.join(cwd, 'cache')
+  }
   const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
     cwd,
-    env: createEnv(managersDir),
+    env,
     encoding: 'utf8',
   })
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`

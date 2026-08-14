@@ -39,30 +39,30 @@ export default {
     color: '#fbae00',
     displayVersion: '12',
     mascot: '🦀',
+    // The Rust engine keeps its store at $PNPM_HOME/store; scenarios that
+    // carry this flag get PNPM_HOME pointed inside the fixture's cache/ dir
+    // so the store is cleaned between scenarios like every other cache.
+    rustEngine: true,
     name: 'pnpm',
     args: [
       'install',
       '--ignore-scripts',
     ]
   },
-  // The command is pnpm's, unchanged: what makes this column different from the
-  // plain pnpm one is the `pnprServer` the fixture is configured with, which
+  // The command is pnpm 12's, unchanged: what makes this column different from
+  // the pnpm 🦀 one is the `pnprServer` the fixture is configured with, which
   // moves dependency resolution onto the registry.
   pnpm_pnpr: {
     scenario: 'pnpm_pnpr',
     legend: 'pnpm + pnpr',
     mdLegend: '[pnpm + pnpr](https://pnpm.io/pnpr/install-acceleration)',
     color: '#2fa84f',
+    displayVersion: '12',
+    rustEngine: true,
     name: 'pnpm',
     args: [
       'install',
       '--ignore-scripts',
-      '--store-dir=cache/store',
-      '--cache-dir=cache/cache',
-      '--registry=https://registry.npmjs.org/',
-      '--no-strict-peer-dependencies',
-      '--config.auto-install-peers=false',
-      '--config.resolution-mode=highest',
     ]
   },
   yarn: {

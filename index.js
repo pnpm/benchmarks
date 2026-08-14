@@ -180,12 +180,12 @@ async function run () {
     { key: 'npm', managersDir: managersDirs.npm },
     { key: 'pnpm11', managersDir: managersDirs.pnpm11 },
     { key: 'pnpm12', managersDir: managersDirs.pnpm12 },
-    // The same pnpm as the row above, resolving the dependency graph on the
-    // registry instead of walking it itself, so pnpr is the only difference
-    // between the two.
+    // The same pnpm 12 as the row above, resolving the dependency graph on
+    // the registry instead of walking it itself, so pnpr is the only
+    // difference between the two.
     {
       key: 'pnpm_pnpr',
-      managersDir: managersDirs.pnpm11,
+      managersDir: managersDirs.pnpm12,
       pnprServer: registry.resolverUrl,
       authToken: registry.authToken,
     },
@@ -223,14 +223,14 @@ async function run () {
 
   **Last benchmarked at**: _${formattedNow}_ (_daily_ updated).
 
-  This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v${registry.version}) across an emulated ${ROUND_TRIP_MS}ms round trip at ${BANDWIDTH_MBPS} Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
+  This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v${registry.version}) across an emulated ${ROUND_TRIP_MS}ms round trip at ${BANDWIDTH_MBPS} Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
 
   About the setup:
 
   - **Every manager crosses the same link.** The round trip is applied to all of them, and to pnpm's resolution requests as well, so no client gets a cheaper connection than another.
   - **pnpr's cache is warmed before anything is timed**, so no manager pays to pull the fixture into the registry on behalf of the ones measured after it.
   - **Server-side resolution pays off when there is a graph to resolve.** Resolving one means walking it level by level, and each level costs a round trip, so the cost is roughly the depth of the graph times the latency. pnpr does that walk next to the registry and answers with the whole resolved lockfile at once, which is why the rows without a lockfile — and the row that changes dependencies — are the ones where it pulls ahead of plain pnpm.
-  - **It costs a round trip when there is not.** pnpm asks the server on every install, including the ones where the lockfile is already up to date and there is nothing to work out. The server answers a question it has been asked before from its cache, in a few milliseconds — what the client pays for is the round trip and having the resolved lockfile streamed back, which plain pnpm never pays because it never asks. That is why the rows with a lockfile come out slightly behind plain pnpm instead of level with it.
+  - **It costs a round trip when there is not.** pnpm asks the server on every install, including the ones where the lockfile is already up to date and there is nothing to work out. The server answers a question it has been asked before from its cache, in a few milliseconds — what the client pays for is the round trip and having the resolved lockfile streamed back, which plain pnpm never pays because it never asks. That is why the rows with a lockfile come out behind plain pnpm instead of level with it.
   - Tarballs are still fetched by the client, in parallel and directly, on every row.
   `
 
