@@ -32,7 +32,7 @@ The app's `package.json` [here](https://github.com/pnpm/benchmarks/blob/main/fix
 | install | ✔ | ✔ | ✔ | 1s | 385ms | 13ms | 1.3s | n/a | 47ms |
 | update | n/a | n/a | n/a | 6.3s | 6.7s | 1s | 1.8s | 1.4s | 468ms |
 
-<img alt="Graph of the alotta-files results" src="/img/benchmarks/alotta-files.svg?v=05a6bf6c" />
+<img alt="Graph of the alotta-files results" src="/img/benchmarks/alotta-files.svg?v=2c6b624b" />
 
 ### pnpm vs pnpm 🦀
 
@@ -50,7 +50,7 @@ pnpm v12 will use a new installation engine for fetching and linking written in 
 | install | ✔ | ✔ | ✔ | 385ms | 13ms |
 | update | n/a | n/a | n/a | 6.7s | 1s |
 
-<img alt="Graph comparing pnpm versions on the alotta-files fixture" src="/img/benchmarks/alotta-files-pnpm.svg?v=1f816894" />
+<img alt="Graph comparing pnpm versions on the alotta-files fixture" src="/img/benchmarks/alotta-files-pnpm.svg?v=00e427a4" />
 
 ## Installing Through a Registry Server
 
