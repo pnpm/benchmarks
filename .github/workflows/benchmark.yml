@@ -1,0 +1,49 @@
+name: Benchmark runner
+
+on:
+  schedule:
+    - cron: '30 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # The job commits the results it measures back to the branch, which the
+    # default read-only token can't do.
+    permissions:
+      contents: write
+    env:
+      COREPACK_ENABLE_AUTO_PIN: 0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+          fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 24
+      - run: |
+          npm install --global corepack
+          corepack enable
+          corepack prepare pnpm@next-10 --activate
+      # fnm is compared against pnpm in the Node.js version management section.
+      - name: Install fnm
+        run: |
+          curl -fsSL https://github.com/Schniz/fnm/releases/latest/download/fnm-linux.zip -o /tmp/fnm.zip
+          unzip -o /tmp/fnm.zip -d /tmp/fnm
+          mkdir -p "$HOME/.local/bin"
+          install -m 755 /tmp/fnm/fnm "$HOME/.local/bin/fnm"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/fnm" --version
+      - run: pnpm install
+      - run: pnpm run benchmark
+      - run: pnpm run benchmark
+      - run: pnpm run benchmark
+      - name: Commit & Push changes
+        # Pinned: this step is handed a token that can write to the repo, so
+        # what runs in it shouldn't be able to change without a commit here.
+        uses: actions-js/push@968f4695ca558093eadb24ad83cc5891f47e0cdc # v1.6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          message: "chore: update benchmarks"
+          branch: main

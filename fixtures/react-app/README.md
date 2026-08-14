@@ -1253,7 +1253,7 @@ You can read more about [zero-configuration pre-rendering (also called snapshott
 
 Similarly to the previous section, you can leave some placeholders in the HTML that inject global variables, for example:
 
-```js
+```html
 <!doctype html>
 <html lang="en">
   <head>
