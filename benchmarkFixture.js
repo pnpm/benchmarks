@@ -141,7 +141,7 @@ async function updateDependenciesInPackageJson (cwd) {
  * written as `_authToken` rather than `_auth` because Basic credentials would
  * cost a password hash on every request inside the measured loop.
  */
-async function writeRegistryConfig (cwd, opts) {
+async function writeRegistryConfig (pm, cwd, opts) {
   let npmrc = `registry=${opts.registry}\n`
   if (opts.authToken) {
     // The resolver is reached on a link of its own, so it is a different host
@@ -155,14 +155,27 @@ async function writeRegistryConfig (cwd, opts) {
   }
   await fs.writeFile(path.join(cwd, '.npmrc'), npmrc)
 
-  if (opts.pnprServer) {
-    // pnpm resolves the dependency graph on the server named here instead of
-    // walking it over the network itself.
-    await fs.writeFile(
-      path.join(cwd, 'pnpm-workspace.yaml'),
-      `packages:\n  - '.'\npnprServer: ${opts.pnprServer}\n`
-    )
+  if (pm.name === 'pnpm') {
+    await fs.writeFile(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(opts))
   }
+}
+
+/**
+ * The workspace manifest every pnpm scenario installs under. `packages`
+ * declares the fixture its own workspace root, so pnpm never walks up into a
+ * directory the benchmark doesn't control. `minimumReleaseAge: 0` turns off
+ * pnpm's hold on freshly published versions: the other managers resolve
+ * whatever is newest, and a pnpm that quietly resolves days-older versions
+ * would install a different graph than the columns it is compared against —
+ * and a different graph than the pnpr server resolves for it. When the
+ * scenario offloads resolution, `pnprServer` names the server it happens on.
+ */
+export function pnpmWorkspaceYaml (opts = {}) {
+  let yaml = "packages:\n  - '.'\nminimumReleaseAge: 0\n"
+  if (opts.pnprServer) {
+    yaml += `pnprServer: ${opts.pnprServer}\n`
+  }
+  return yaml
 }
 
 /**
@@ -196,7 +209,7 @@ export default async function benchmark (pm, fixture, opts) {
   cleanLockfile(pm, cwd, env)
 
   if (opts.registry) {
-    await writeRegistryConfig(cwd, opts)
+    await writeRegistryConfig(pm, cwd, opts)
   }
 
   if (pm.name === 'yarn') {

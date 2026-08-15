@@ -3,7 +3,7 @@ import fs from 'fs'
 import net from 'net'
 import path from 'path'
 import spawn from 'cross-spawn'
-import { createEnv, applyPnprServerRegistry, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
+import { createEnv, applyPnprServerRegistry, pnpmWorkspaceYaml, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
 
 /**
  * Takes a port the operating system says is free.
@@ -223,10 +223,12 @@ export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
   fs.mkdirSync(cwd, { recursive: true })
   fs.copyFileSync(path.join(fixtureDir, 'package.json'), path.join(cwd, 'package.json'))
   fs.writeFileSync(path.join(cwd, '.npmrc'), `registry=${registry}\n`)
-  // Declaring a workspace root stops pnpm walking up into the manager
+  // The same workspace manifest the measured pnpm scenarios install under,
+  // so the populate pass resolves the same universe of versions they will.
+  // Declaring a workspace root also stops pnpm walking up into the manager
   // directory above, whose own lockfile is for pnpr's dependencies and has
   // nothing to do with the fixture.
-  fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), "packages:\n  - '.'\n")
+  fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml())
 
   const install = (label) => {
     const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
@@ -265,7 +267,7 @@ export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToke
   const hosts = new Set([registry, pnprServer].map((url) => new URL(url).host))
   const auth = [...hosts].map((host) => `//${host}/:_authToken=${authToken}\n`).join('')
   fs.writeFileSync(path.join(cwd, '.npmrc'), `registry=${registry}\n${auth}`)
-  fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), `packages:\n  - '.'\npnprServer: ${pnprServer}\n`)
+  fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml({ pnprServer }))
 
   const resolveCalls = () => (serverLog().match(/uri=\/-\/pnpr\/v0\/resolve/g) ?? []).length
   const before = resolveCalls()

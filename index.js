@@ -151,6 +151,13 @@ async function run () {
   ])
   for (const dir of Object.values(managersDirs)) {
     fs.writeFileSync(path.join(dir, 'package.json'), '{}', 'utf8')
+    // pnpm holds versions younger than `minimumReleaseAge` back, so a
+    // freshly published `pnpm@next-12` (or any other manager released within
+    // the window) would silently benchmark the previous release for days.
+    // The benchmark exists to measure the latest of everything, so the hold
+    // is turned off where the managers are installed. The yaml is what the
+    // Rust engine reads reliably — its `.npmrc`/`--config` parsing differs.
+    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), "packages:\n  - '.'\nminimumReleaseAge: 0\n", 'utf8')
   }
   addPackageManager(['npm@latest'], managersDirs.npm)
   addPackageManager(['pnpm@latest'], managersDirs.pnpm11)
