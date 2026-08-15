@@ -163,15 +163,21 @@ async function writeRegistryConfig (pm, cwd, opts) {
 /**
  * The workspace manifest every pnpm scenario installs under. `packages`
  * declares the fixture its own workspace root, so pnpm never walks up into a
- * directory the benchmark doesn't control. `minimumReleaseAge: 0` turns off
- * pnpm's hold on freshly published versions: the other managers resolve
- * whatever is newest, and a pnpm that quietly resolves days-older versions
- * would install a different graph than the columns it is compared against —
- * and a different graph than the pnpr server resolves for it. When the
- * scenario offloads resolution, `pnprServer` names the server it happens on.
+ * directory the benchmark doesn't control. When the scenario offloads
+ * resolution, `pnprServer` names the server it happens on.
+ *
+ * `minimumReleaseAge` is deliberately left at pnpm's default here, unlike
+ * the directories the managers are installed into. The hold — and the
+ * lockfile verification pass it drives — is pnpm's default behavior, so it
+ * belongs in the measurement; the client sends the setting along with its
+ * resolve and verify-lockfile requests, so the server applies the same
+ * cutoff and both pnpm columns still install the same graph. Setting it to
+ * zero would leave no verifier configured at all, silently deleting the
+ * verification work whose offload to the server the accelerated column
+ * exists to measure.
  */
 export function pnpmWorkspaceYaml (opts = {}) {
-  let yaml = "packages:\n  - '.'\nminimumReleaseAge: 0\n"
+  let yaml = "packages:\n  - '.'\n"
   if (opts.pnprServer) {
     yaml += `pnprServer: ${opts.pnprServer}\n`
   }
