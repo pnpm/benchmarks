@@ -82,3 +82,12 @@
 - cleanInstall: 3222.27
   warmStoreInstall: 3238.12
   runInProject: 5.19
+- cleanInstall: 2976.17
+  warmStoreInstall: 3007.82
+  runInProject: 5.19
+- cleanInstall: 3052.09
+  warmStoreInstall: 2954.22
+  runInProject: 4.86
+- cleanInstall: 3009.04
+  warmStoreInstall: 2997.98
+  runInProject: 5.01
