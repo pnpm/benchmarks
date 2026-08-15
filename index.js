@@ -10,10 +10,9 @@ import benchmark from './recordBenchmark.js'
 import nodeVersionsSection from './nodeVersionsSection.js'
 import { startBenchmarkRegistry, ROUND_TRIP_MS, BANDWIDTH_MBPS, RESULTS_SUFFIX } from './benchmarkRegistry.js'
 import { cloneNvm } from './benchmarkNodeVersions.js'
-import { installYarn } from './installYarn.js'
+import { bootstrapInstaller, provisionPackageManagers } from './setupPackageManagers.js'
 import generateSvg from './generateSvg.js'
 import generateStackedSvg from './generateStackedSvg.js'
-import spawn from "cross-spawn"
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -125,19 +124,6 @@ run()
     process.exitCode = 1
   })
 
-/**
- * A package manager that fails to install is worse than a failed benchmark: the
- * scenarios still find the machine's own `npm`/`pnpm`/`bun` further down PATH
- * and quietly measure that version instead of the one being benchmarked.
- */
-function addPackageManager (args, cwd) {
-  const result = spawn.sync('pnpm', ['add', ...args], { cwd, stdio: 'inherit' })
-  if (result.error) throw result.error
-  if (result.status !== 0) {
-    throw new Error(`\`pnpm add ${args.join(' ')}\` failed with status code ${result.status}`)
-  }
-}
-
 async function run () {
   const tmpDir = tempy.directory()
   const managersDirs = {}
@@ -159,14 +145,10 @@ async function run () {
     // Rust engine reads reliably — its `.npmrc`/`--config` parsing differs.
     fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), "packages:\n  - '.'\nminimumReleaseAge: 0\n", 'utf8')
   }
-  addPackageManager(['npm@latest'], managersDirs.npm)
-  addPackageManager(['pnpm@latest'], managersDirs.pnpm11)
-  // pnpm 12 ships its Rust binary via an install script, so the build must be
-  // allowed; otherwise the `pnpm` bin is left as a placeholder that errors out.
-  addPackageManager(['pnpm@next-12', '--allow-build=pnpm'], managersDirs.pnpm12)
-  await installYarn(managersDirs.yarn)
-  // Like pnpm 12, the bun package downloads its binary from a postinstall script.
-  addPackageManager(['bun@latest', '--allow-build=bun'], managersDirs.bun)
+  // pnpm 12 installs the other package managers natively, so one bootstrapped
+  // installer provisions everything the benchmark measures.
+  const installerPnpm = bootstrapInstaller(path.join(tmpDir, 'setup'))
+  provisionPackageManagers(installerPnpm, managersDirs)
   cloneNvm(managersDirs.nvm)
   const formattedNow = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
   // Every package manager installs through the same registry of our own,
