@@ -205,6 +205,15 @@ export default async function benchmark (pm, fixture, opts) {
     // pnpm 12's Rust engine uses the store layout at $PNPM_HOME/store, which lines
     // up with the cache/ directory the rest of the flow cleans between scenarios.
     env.PNPM_HOME = path.join(cwd, 'cache')
+    // $PNPM_HOME moves only the store: the engine's cacheDir — the packument
+    // mirror and the lockfile-verification verdict file — defaults to the
+    // machine's own ~/.cache/pnpm, where it would survive every wipe. Left
+    // there, no measured install ever resolves or verifies cold: the untimed
+    // warm-up fills the mirror and the "no cache" rows silently read it,
+    // an advantage no other column gets (their caches all live under the
+    // cache/ directory the scenarios delete). Pin it inside cache/ like
+    // pnpm 11's --cache-dir, so wiping cache/ means what it says.
+    env.PNPM_CONFIG_CACHE_DIR = path.join(cwd, 'cache', 'cache')
   }
   if (opts.pnprServerRegistry) {
     applyPnprServerRegistry(env, opts.pnprServerRegistry)
