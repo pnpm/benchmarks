@@ -55,6 +55,18 @@ const runners = {
         const pathEnv = pathKey()
         env.PNPM_HOME = home
         env[pathEnv] = [path.join(home, 'bin'), baseEnv[pathEnv]].join(path.delimiter)
+        // What these scenarios measure is pnpm's per-project runtime
+        // switching, and a `globalShims` override in the inherited
+        // environment reaches into both halves of it: at link time it makes
+        // `pnpm runtime set` write a plain link instead of the switching
+        // shim, and at run time it turns an already-written shim's dispatch
+        // off. CI is such an environment — pnpm/setup exports
+        // `PNPM_CONFIG_GLOBAL_SHIMS={"node":false}` to keep the runtime it
+        // installed authoritative for the job. Empty means unset to pnpm,
+        // and assignment is the only way to mask a value the base
+        // environment holds through the prototype chain.
+        env.PNPM_CONFIG_GLOBAL_SHIMS = ''
+        env.pnpm_config_global_shims = ''
         return env
       },
       prepare,
