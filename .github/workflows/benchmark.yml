@@ -12,20 +12,17 @@ jobs:
     # default read-only token can't do.
     permissions:
       contents: write
-    env:
-      COREPACK_ENABLE_AUTO_PIN: 0
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
           fetch-depth: 0
-      - uses: actions/setup-node@v3
+      # The harness's own pnpm — at the version the repo's `packageManager`
+      # field pins — and the Node.js it runs on. The step also runs
+      # `pnpm install` for the harness.
+      - uses: pnpm/setup@v2
         with:
-          node-version: 24
-      - run: |
-          npm install --global corepack
-          corepack enable
-          corepack prepare pnpm@next-10 --activate
+          runtime: node@24
       # fnm is compared against pnpm in the Node.js version management section.
       - name: Install fnm
         run: |
@@ -35,7 +32,6 @@ jobs:
           install -m 755 /tmp/fnm/fnm "$HOME/.local/bin/fnm"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           "$HOME/.local/bin/fnm" --version
-      - run: pnpm install
       # The token authenticates pnpm's Yarn 6 release-list request against
       # GitHub's API, whose anonymous rate limit is shared across every job on
       # the runner's IP.
