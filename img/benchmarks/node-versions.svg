@@ -36,7 +36,7 @@
   <text x="290" y="36" class="font s5 text" text-anchor="middle">5</text>
   <text x="290" y="95" class="font s5 text" text-anchor="middle">5</text>
   <text x="290" y="28" class="font s4 text" font-style="italic" text-anchor="end">Installation time in seconds (lower is better)</text>
-  <rect x="40" y="43" width="50" height="6" fill="#fbae00" rx="1" ry="1"></rect>
+  <rect x="40" y="43" width="55" height="6" fill="#fbae00" rx="1" ry="1"></rect>
   <rect x="40" y="49.5" width="120" height="6" fill="#6f42c1" rx="1" ry="1"></rect>
   <rect x="40" y="56" width="120" height="6" fill="#5fa04e" rx="1" ry="1"></rect>
   <rect x="40" y="66.5" width="10" height="6" fill="#fbae00" rx="1" ry="1"></rect>
@@ -47,5 +47,5 @@
   <text x="38" y="54.5" class="font s4" dominant-baseline="middle" text-anchor="end">clean</text>
   <text x="38" y="74" class="font s4" dominant-baseline="middle" text-anchor="end">install</text>
   <text x="38" y="78" class="font s4" dominant-baseline="middle" text-anchor="end">warm store</text>
-  <text x="290" y="102" class="font s4 text" text-anchor="end">Tests were run using Node.js v24.19.0 at: Aug 14, 2026, 10:51 AM</text>
+  <text x="290" y="102" class="font s4 text" text-anchor="end">Tests were run using Node.js v24.19.0 at: Aug 15, 2026, 5:33 PM</text>
 </svg>
