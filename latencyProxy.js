@@ -56,8 +56,17 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
  * Forwards one direction of a connection, holding every chunk for the link's
  * one-way delay and, when the link is capped, for as long as it takes to put
  * the chunk on the wire.
+ *
+ * `link` is the direction's shared pacing state — one per direction for the
+ * whole proxy, not per connection. The cap models one wire: a manager that
+ * opens two hundred connections still downloads at the configured rate in
+ * total, the way it would on a real link. Paced per connection instead, the
+ * cap multiplies by however many connections a client opens, and the
+ * benchmark quietly hands the most connection-hungry manager the fattest
+ * pipe. (The slow-start ramp stays per connection — that is where TCP keeps
+ * its congestion window — only the wire underneath is shared.)
  */
-function pump (src, dst, profile) {
+function pump (src, dst, profile, link) {
   const ramp = createSlowStart(profile)
   // How many bytes may be on the link at once before the sender is made to
   // wait. A real link carries a whole round trip's worth of data in flight, so
@@ -70,10 +79,6 @@ function pump (src, dst, profile) {
     (profile.rateLimit ?? 12_500_000) * (profile.oneWayMs * 2 / 1000) * 2
   )
   let queuedBytes = 0
-  // The earliest moment the link is free to start the next chunk. It advances
-  // by each chunk's serialization time so the cap is a sustained throughput
-  // limit rather than a per-chunk one.
-  let linkFreeAt = 0
   let queue = Promise.resolve()
 
   src.on('data', (chunk) => {
@@ -87,15 +92,20 @@ function pump (src, dst, profile) {
     const releaseAt = Date.now() + profile.oneWayMs
     queue = queue.then(async () => {
       if (dst.destroyed) return
-      const sendAt = Math.max(releaseAt, linkFreeAt)
-      const wait = sendAt - Date.now()
-      if (wait > 0) await sleep(wait)
+      // The wire is claimed before the wait, not after it: the reservation
+      // has to be visible to every other connection the moment this chunk is
+      // scheduled, or they would all pace against the same free point and the
+      // cap would multiply by the number of connections in flight.
+      let sendAt = releaseAt
       if (profile.rateLimit != null) {
         const rate = ramp
           ? effectiveRate(ramp, profile.rateLimit, chunk.length)
           : profile.rateLimit
-        linkFreeAt = Math.max(sendAt, Date.now()) + (chunk.length / rate) * 1000
+        sendAt = Math.max(releaseAt, link.freeAt)
+        link.freeAt = Math.max(sendAt, Date.now()) + (chunk.length / rate) * 1000
       }
+      const wait = sendAt - Date.now()
+      if (wait > 0) await sleep(wait)
       if (dst.destroyed) return
       // Respect backpressure, otherwise a capped link would buffer whole
       // tarballs in memory instead of pacing them. The wait has to end if the
@@ -131,6 +141,12 @@ function pump (src, dst, profile) {
 function listen ({ upstreamPort, roundTripMs, rateLimit, slowStart }) {
   // The profile is one-way; a round trip pays it twice.
   const profile = { oneWayMs: roundTripMs / 2, rateLimit, slowStart }
+  // One pacing point per direction for the whole proxy: the earliest moment
+  // the wire is free to start the next chunk, advanced by each chunk's
+  // serialization time so the cap is a sustained throughput limit. Shared
+  // across every connection, because they all cross the same emulated link.
+  const uplink = { freeAt: 0 }
+  const downlink = { freeAt: 0 }
   // Both sockets have to stay half-open. Delaying a chunk means one direction
   // is always behind the other, and with Node's default the first side to
   // finish would close its peer's write side before the chunks still waiting on
@@ -139,8 +155,8 @@ function listen ({ upstreamPort, roundTripMs, rateLimit, slowStart }) {
     const upstream = net.connect({ host: '127.0.0.1', port: upstreamPort, allowHalfOpen: true })
     upstream.on('error', () => client.destroy())
     client.on('error', () => upstream.destroy())
-    const toUpstream = pump(client, upstream, profile)
-    const toClient = pump(upstream, client, profile)
+    const toUpstream = pump(client, upstream, profile, uplink)
+    const toClient = pump(upstream, client, profile, downlink)
     // A peer that goes away must not take its other half with it while chunks
     // are still on the link. Ending a response is the ordinary case: the source
     // socket closes as soon as it has handed over its last bytes, but those

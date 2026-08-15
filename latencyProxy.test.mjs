@@ -92,6 +92,27 @@ test('throughput follows the configured bandwidth, not the chunk size', async ()
   }
 })
 
+test('the bandwidth cap belongs to the link, not to each connection', async () => {
+  const origin = await startOrigin()
+  const proxy = await proxyFor(origin.port, { roundTripMs: 40, rateLimit: mbpsToBytesPerSec(100) })
+  try {
+    const startedAt = Date.now()
+    const results = await Promise.all(
+      Array.from({ length: 3 }, () => fetchThrough(proxy.port, '/big'))
+    )
+    const ms = Date.now() - startedAt
+    for (const result of results) assert.equal(result.digest, DIGEST)
+    // Three concurrent 4 MiB downloads are 12 MiB over one 100 Mbit/s wire:
+    // ~1s. A proxy that paces each connection separately hands every download
+    // its own 100 Mbit and finishes all three in ~380ms — which is how a
+    // benchmark ends up rewarding whichever client opens the most connections.
+    assert.ok(ms >= 900, `expected ≥900ms for 12 MiB over a shared 100 Mbit link, got ${ms}ms`)
+    assert.ok(ms < 3000, `expected ~1s, got ${ms}ms — the shared link is over-serialising`)
+  } finally {
+    proxy.close(); origin.close()
+  }
+})
+
 test('responses survive intact over reused and concurrent connections', async () => {
   const origin = await startOrigin()
   const proxy = await proxyFor(origin.port, { roundTripMs: 20, rateLimit: mbpsToBytesPerSec(200) })
