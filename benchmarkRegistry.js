@@ -27,6 +27,11 @@ export const BANDWIDTH_MBPS = 200
 // own across an emulated link is a different measurement than the public
 // registry over whatever link the machine has, so these runs must never be
 // pooled with the ones recorded before this became the benchmark's setup.
+// The same rule holds within the suffix: when the setup changed shape again
+// (the pnpr server resolving on loopback instead of across the emulated link,
+// the registry warmed with the updated-dependencies graph), the runs recorded
+// before the change were deleted rather than left for `min()` to pool with
+// the new ones.
 export const RESULTS_SUFFIX = '-pnpr'
 
 /**
@@ -130,6 +135,7 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
       registry: url,
       authToken,
       pnprServer: resolverUrl,
+      pnprServerRegistry: server.url,
       fixtureDir: path.join(DIRNAME, 'fixtures', fixtureNames[0]),
       serverLog: server.log,
     })
@@ -137,6 +143,13 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     return {
       url,
       resolverUrl,
+      // The server's own un-proxied address. The accelerated scenario hands
+      // this to the client as the registry to resolve against server-side,
+      // so the resolver's metadata fetches stay next to the registry — the
+      // production shape, and the one the pnpm monorepo's
+      // `integrated-benchmark` measures — instead of crossing the emulated
+      // link back into the server's public endpoint.
+      serverDirectUrl: server.url,
       authToken,
       version,
       assertAlive,

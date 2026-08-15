@@ -151,6 +151,13 @@ async function run () {
   ])
   for (const dir of Object.values(managersDirs)) {
     fs.writeFileSync(path.join(dir, 'package.json'), '{}', 'utf8')
+    // pnpm holds versions younger than `minimumReleaseAge` back, so a
+    // freshly published `pnpm@next-12` (or any other manager released within
+    // the window) would silently benchmark the previous release for days.
+    // The benchmark exists to measure the latest of everything, so the hold
+    // is turned off where the managers are installed. The yaml is what the
+    // Rust engine reads reliably — its `.npmrc`/`--config` parsing differs.
+    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), "packages:\n  - '.'\nminimumReleaseAge: 0\n", 'utf8')
   }
   addPackageManager(['npm@latest'], managersDirs.npm)
   addPackageManager(['pnpm@latest'], managersDirs.pnpm11)
@@ -182,11 +189,14 @@ async function run () {
     { key: 'pnpm12', managersDir: managersDirs.pnpm12 },
     // The same pnpm 12 as the row above, resolving the dependency graph on
     // the registry instead of walking it itself, so pnpr is the only
-    // difference between the two.
+    // difference between the two. The server does that resolving against its
+    // own un-proxied address: it models a resolver co-located with the
+    // registry, not one reaching its own metadata across the client's link.
     {
       key: 'pnpm_pnpr',
       managersDir: managersDirs.pnpm12,
       pnprServer: registry.resolverUrl,
+      pnprServerRegistry: registry.serverDirectUrl,
       authToken: registry.authToken,
     },
     { key: 'yarn', managersDir: managersDirs.yarn },
@@ -228,9 +238,9 @@ async function run () {
   About the setup:
 
   - **Every manager crosses the same link.** The round trip is applied to all of them, and to pnpm's resolution requests as well, so no client gets a cheaper connection than another.
-  - **pnpr's cache is warmed before anything is timed**, so no manager pays to pull the fixture into the registry on behalf of the ones measured after it.
-  - **Server-side resolution pays off when there is a graph to resolve.** Resolving one means walking it level by level, and each level costs a round trip, so the cost is roughly the depth of the graph times the latency. pnpr does that walk next to the registry and answers with the whole resolved lockfile at once, which is why the rows without a lockfile — and the row that changes dependencies — are the ones where it pulls ahead of plain pnpm.
-  - **It costs a round trip when there is not.** pnpm asks the server on every install, including the ones where the lockfile is already up to date and there is nothing to work out. The server answers a question it has been asked before from its cache, in a few milliseconds — what the client pays for is the round trip and having the resolved lockfile streamed back, which plain pnpm never pays because it never asks. That is why the rows with a lockfile come out behind plain pnpm instead of level with it.
+  - **pnpr's cache is warmed before anything is timed** — with the fixture's dependency graph and with the one the update row installs — so no manager pays to pull either into the registry on behalf of the ones measured after it.
+  - **Server-side resolution pays off when there is a graph to resolve.** Resolving one means walking it level by level, and each level costs a round trip, so the cost is roughly the depth of the graph times the latency. pnpr does that walk next to the registry — its own metadata access stays on loopback, the co-located shape the [pnpm monorepo's integrated benchmark](https://github.com/pnpm/pnpm) measures — and answers with the whole resolved lockfile at once, which is why the rows without a lockfile, and the row that changes dependencies, are the ones where it pulls ahead of plain pnpm.
+  - **With an up-to-date lockfile there is nothing to resolve.** pnpm doesn't ask the server then, so those rows measure the same install in both pnpm 12 columns.
   - Tarballs are still fetched by the client, in parallel and directly, on every row.
   `
 

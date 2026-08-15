@@ -31,6 +31,27 @@ export function createEnv (managersDir) {
   return env
 }
 
+/**
+ * Makes the pnpr server resolve next to the registry instead of across the
+ * emulated link.
+ *
+ * pnpr resolves against the registry URL the client sends, and the client's
+ * configured registry sits behind the latency proxy — so without this, the
+ * server would fetch every packument by going out through the emulated link
+ * and back into its own front door, paying the very round trips per graph
+ * level that server-side resolution exists to remove. These are the
+ * benchmark-only hooks pnpm's client reads (`PnprBenchmarkRegistryOverride`
+ * in the pnpm monorepo, put there for its `integrated-benchmark` task, which
+ * models the same co-located server): the resolve request carries this
+ * registry — the un-proxied one — and any URL in the answer that names it is
+ * rewritten back to the client's own registry, so tarballs still cross the
+ * emulated link like every other scenario's do.
+ */
+export function applyPnprServerRegistry (env, registry) {
+  env.PACQUET_BENCHMARK_PNPR_SERVER_REGISTRY = registry
+  env.PACQUET_BENCHMARK_PNPR_TARBALL_REWRITE_FROM = registry
+}
+
 function cleanLockfile (pm, cwd, env) {
   const lockfileName = lockfileNameByPM[pm.name]
   rimraf.sync(path.join(cwd, lockfileName))
@@ -38,6 +59,59 @@ function cleanLockfile (pm, cwd, env) {
     // This ensures yarn berry to install under a nested folder
     spawnSyncOrThrow({ name: 'nodetouch', args: [lockfileName] }, { env, cwd, stdio: "inherit" })
   }
+}
+
+/**
+ * The dependencies the `updatedDependencies` scenario adds on top of the
+ * fixture's own. Exported so the registry warm-up can install this graph
+ * untimed: it is a different set of packages than the fixture's, and a
+ * registry that has never served it would make whoever asks first pay to
+ * pull it from npmjs inside a measured run.
+ */
+export const UPDATED_DEPENDENCIES = {
+  "babel-core": "^6.4.0",
+  "babel-eslint": "^6.1.2",
+  "babel-loader": "^6.2.1",
+  "babel-plugin-lodash": "^3.2.11",
+  "babel-plugin-module-resolver": "^2.2.0",
+  "babel-plugin-transform-decorators-legacy": "^1.3.4",
+  "babel-plugin-transform-runtime": "^6.4.3",
+  "babel-polyfill": "^6.23.0",
+  "babel-preset-es2015": "^6.3.13",
+  "babel-preset-react": "^6.3.13",
+  "babel-preset-react-hmre": "^1.0.1",
+  "babel-preset-stage-1": "^6.3.13",
+  "babel-runtime": "^6.3.19",
+  "clean-webpack-plugin": "^0.1.16",
+  "core-decorators": "^0.12.3",
+  "css-loader": "^0.23.1",
+  "css-mqpacker": "^4.0.0",
+  "react": "^15.4.1",
+  "react-addons-css-transition-group": "^15.3.0",
+  "react-addons-shallow-compare": "^15.3.0",
+  "react-dnd": "^2.1.4",
+  "react-dnd-html5-backend": "^2.1.2",
+  "react-dom": "^15.4.1",
+  "react-draft-wysiwyg": "^1.6.5",
+  "react-dropzone": "^3.5.3",
+  "react-grid-layout": "^0.12.6",
+  "react-highcharts": "^11.5.0",
+  "react-hot-loader": "v3.0.0-beta.6",
+  "react-input-calendar": "^0.3.14",
+  "react-lazyload": "^2.2.5",
+  "react-measure": "^1.4.6",
+  "react-mixin": "^3.0.3",
+  "react-responsive": "^1.2.5",
+  "react-responsive-tabs": "^0.5.3",
+  "react-router": "^4.0.0",
+  "react-router-dom": "^4.0.0",
+  "react-select-plus": "^1.0.0-rc",
+  "react-skylight": "^0.3.0",
+  "react-sortablejs": "^1.2.1",
+  "react-tappable": "^0.8.4",
+  "react-tooltip": "3.11.2",
+  "react-virtualized": "^7.19.4",
+  "react-waypoint": "^5.2.0",
 }
 
 async function updateDependenciesInPackageJson (cwd) {
@@ -48,49 +122,7 @@ async function updateDependenciesInPackageJson (cwd) {
 
   parsed.dependencies = {
     ...parsed.dependencies,
-    "babel-core": "^6.4.0",
-    "babel-eslint": "^6.1.2",
-    "babel-loader": "^6.2.1",
-    "babel-plugin-lodash": "^3.2.11",
-    "babel-plugin-module-resolver": "^2.2.0",
-    "babel-plugin-transform-decorators-legacy": "^1.3.4",
-    "babel-plugin-transform-runtime": "^6.4.3",
-    "babel-polyfill": "^6.23.0",
-    "babel-preset-es2015": "^6.3.13",
-    "babel-preset-react": "^6.3.13",
-    "babel-preset-react-hmre": "^1.0.1",
-    "babel-preset-stage-1": "^6.3.13",
-    "babel-runtime": "^6.3.19",
-    "clean-webpack-plugin": "^0.1.16",
-    "core-decorators": "^0.12.3",
-    "css-loader": "^0.23.1",
-    "css-mqpacker": "^4.0.0",
-    "react": "^15.4.1",
-    "react-addons-css-transition-group": "^15.3.0",
-    "react-addons-shallow-compare": "^15.3.0",
-    "react-dnd": "^2.1.4",
-    "react-dnd-html5-backend": "^2.1.2",
-    "react-dom": "^15.4.1",
-    "react-draft-wysiwyg": "^1.6.5",
-    "react-dropzone": "^3.5.3",
-    "react-grid-layout": "^0.12.6",
-    "react-highcharts": "^11.5.0",
-    "react-hot-loader": "v3.0.0-beta.6",
-    "react-input-calendar": "^0.3.14",
-    "react-lazyload": "^2.2.5",
-    "react-measure": "^1.4.6",
-    "react-mixin": "^3.0.3",
-    "react-responsive": "^1.2.5",
-    "react-responsive-tabs": "^0.5.3",
-    "react-router": "^4.0.0",
-    "react-router-dom": "^4.0.0",
-    "react-select-plus": "^1.0.0-rc",
-    "react-skylight": "^0.3.0",
-    "react-sortablejs": "^1.2.1",
-    "react-tappable": "^0.8.4",
-    "react-tooltip": "3.11.2",
-    "react-virtualized": "^7.19.4",
-    "react-waypoint": "^5.2.0",
+    ...UPDATED_DEPENDENCIES,
   }
 
   const modifiedAsString = JSON.stringify(parsed)
@@ -109,7 +141,7 @@ async function updateDependenciesInPackageJson (cwd) {
  * written as `_authToken` rather than `_auth` because Basic credentials would
  * cost a password hash on every request inside the measured loop.
  */
-async function writeRegistryConfig (cwd, opts) {
+async function writeRegistryConfig (pm, cwd, opts) {
   let npmrc = `registry=${opts.registry}\n`
   if (opts.authToken) {
     // The resolver is reached on a link of its own, so it is a different host
@@ -123,14 +155,33 @@ async function writeRegistryConfig (cwd, opts) {
   }
   await fs.writeFile(path.join(cwd, '.npmrc'), npmrc)
 
-  if (opts.pnprServer) {
-    // pnpm resolves the dependency graph on the server named here instead of
-    // walking it over the network itself.
-    await fs.writeFile(
-      path.join(cwd, 'pnpm-workspace.yaml'),
-      `packages:\n  - '.'\npnprServer: ${opts.pnprServer}\n`
-    )
+  if (pm.name === 'pnpm') {
+    await fs.writeFile(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(opts))
   }
+}
+
+/**
+ * The workspace manifest every pnpm scenario installs under. `packages`
+ * declares the fixture its own workspace root, so pnpm never walks up into a
+ * directory the benchmark doesn't control. When the scenario offloads
+ * resolution, `pnprServer` names the server it happens on.
+ *
+ * `minimumReleaseAge` is deliberately left at pnpm's default here, unlike
+ * the directories the managers are installed into. The hold — and the
+ * lockfile verification pass it drives — is pnpm's default behavior, so it
+ * belongs in the measurement; the client sends the setting along with its
+ * resolve and verify-lockfile requests, so the server applies the same
+ * cutoff and both pnpm columns still install the same graph. Setting it to
+ * zero would leave no verifier configured at all, silently deleting the
+ * verification work whose offload to the server the accelerated column
+ * exists to measure.
+ */
+export function pnpmWorkspaceYaml (opts = {}) {
+  let yaml = "packages:\n  - '.'\n"
+  if (opts.pnprServer) {
+    yaml += `pnprServer: ${opts.pnprServer}\n`
+  }
+  return yaml
 }
 
 /**
@@ -155,13 +206,16 @@ export default async function benchmark (pm, fixture, opts) {
     // up with the cache/ directory the rest of the flow cleans between scenarios.
     env.PNPM_HOME = path.join(cwd, 'cache')
   }
+  if (opts.pnprServerRegistry) {
+    applyPnprServerRegistry(env, opts.pnprServerRegistry)
+  }
   cpSync(path.join(FIXTURES_DIR, fixture), cwd, { recursive: true })
   const modules = opts.hasNodeModules ? path.join(cwd, 'node_modules') : null
 
   cleanLockfile(pm, cwd, env)
 
   if (opts.registry) {
-    await writeRegistryConfig(cwd, opts)
+    await writeRegistryConfig(pm, cwd, opts)
   }
 
   if (pm.name === 'yarn') {
@@ -200,17 +254,26 @@ export default async function benchmark (pm, fixture, opts) {
   // question it has never been asked, a package manager's own start-up, a
   // filesystem that has not seen these paths yet.
   //
-  // It runs twice because an install without a lockfile and an install with one
-  // are different questions, and a server that caches answers has to have been
-  // asked both. The first warm-up produces the lockfile the second one sends,
-  // and `node_modules` goes away in between: a package manager that already has
-  // the right tree installed skips resolving altogether, so leaving it in place
-  // means the second warm-up asks nothing and the question it exists to ask
-  // stays cold until a scenario that is being measured asks it.
+  // It runs three times because an install without a lockfile, an install with
+  // one, and an install whose manifest the lockfile no longer matches are
+  // different questions, and a server that caches answers has to have been
+  // asked all three. The first warm-up produces the lockfile the second one
+  // sends, and `node_modules` goes away in between: a package manager that
+  // already has the right tree installed skips resolving altogether, so leaving
+  // it in place means the second warm-up asks nothing and the question it
+  // exists to ask stays cold until a scenario that is being measured asks it.
+  // The third asks the `updatedDependencies` question — without it, that
+  // scenario would be the only measured install whose resolution the server
+  // (and, for the accelerated column, pnpr's resolver) had never seen, and it
+  // would pay first-ever costs inside the one run that is timed.
   console.log('# warm-up (not measured)')
   measureInstall(pm, cwd, env)
   removeInstallOutput(cwd, modules)
   measureInstall(pm, cwd, env)
+  removeInstallOutput(cwd, modules)
+  const warmUpPackageJson = await updateDependenciesInPackageJson(cwd)
+  measureInstall(withUpdateArgs(pm), cwd, env)
+  await fs.writeFile(path.join(cwd, 'package.json'), warmUpPackageJson)
   removeInstallOutput(cwd, modules)
   rimraf.sync(path.join(cwd, 'cache'))
   cleanLockfile(pm, cwd, env)
@@ -289,14 +352,7 @@ export default async function benchmark (pm, fixture, opts) {
 
   // update all dependency versions to '*' and install again
   const originalPackageJson = await updateDependenciesInPackageJson(cwd)
-  if (pm.name === 'pnpm') {
-    // This is needed to fix pnpm execution on CI
-    pm = {
-      ...pm,
-      args: [...pm.args, '--no-frozen-lockfile'],
-    }
-  }
-  const updatedDependencies = measureInstall(pm, cwd, env)
+  const updatedDependencies = measureInstall(withUpdateArgs(pm), cwd, env)
 
   // revert `package.json` back to its original state, just in case
   await fs.writeFile(path.join(cwd, 'package.json'), originalPackageJson)
@@ -313,6 +369,19 @@ export default async function benchmark (pm, fixture, opts) {
     withWarmModules,
     updatedDependencies,
     size
+  }
+}
+
+/**
+ * The command for an install whose `package.json` changed under an existing
+ * lockfile. pnpm turns on `--frozen-lockfile` when CI is set, which refuses
+ * exactly that state, so the flag has to be lifted for it.
+ */
+function withUpdateArgs (pm) {
+  if (pm.name !== 'pnpm') return pm
+  return {
+    ...pm,
+    args: [...pm.args, '--no-frozen-lockfile'],
   }
 }
 
