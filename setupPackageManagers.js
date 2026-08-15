@@ -56,8 +56,11 @@ export function bootstrapInstaller (setupDir) {
 export function provisionPackageManagers (installerPnpm, managersDirs) {
   provision(installerPnpm, managersDirs.npm, ['add', '--global', 'npm@latest'])
   // pnpm refuses `pnpm add --global pnpm`: switching pnpm is `self-update`'s
-  // job, so that is what installs both pnpm lines.
-  provision(installerPnpm, managersDirs.pnpm11, ['self-update', 'latest'])
+  // job, so that is what installs both pnpm lines. The v11 column pins the
+  // line's own dist-tag rather than `latest`, which would follow the
+  // registry's default tag onto pnpm 12 the moment that becomes the stable
+  // line — and this column exists to measure the previous major.
+  provision(installerPnpm, managersDirs.pnpm11, ['self-update', 'latest-11'])
   provision(installerPnpm, managersDirs.pnpm12, ['self-update', 'next-12'])
   // `yarn@6` rather than `yarn@latest`: a specifier that doesn't commit to a
   // major resolves to Yarn Berry from npm, while the benchmark measures the
