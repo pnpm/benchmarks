@@ -24,6 +24,11 @@ export function createEnv (managersDir) {
   const pathEnv = pathKey()
   const env = Object.create(process.env)
   env[pathEnv] = [
+    // Where pnpm 12 links the executables of the package managers it
+    // provisions: the directory is the manager's own pnpm home, and `bin` is
+    // its global bin directory.
+    path.join(managersDir, 'bin'),
+    // Where tools installed as packages keep theirs — pnpr today.
     path.join(managersDir, 'node_modules/.bin'),
     path.dirname(process.execPath),
     process.env[pathEnv]

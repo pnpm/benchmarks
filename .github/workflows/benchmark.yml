@@ -36,9 +36,18 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           "$HOME/.local/bin/fnm" --version
       - run: pnpm install
+      # The token authenticates pnpm's Yarn 6 release-list request against
+      # GitHub's API, whose anonymous rate limit is shared across every job on
+      # the runner's IP.
       - run: pnpm run benchmark
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm run benchmark
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm run benchmark
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Commit & Push changes
         # Pinned: this step is handed a token that can write to the repo, so
         # what runs in it shouldn't be able to change without a commit here.

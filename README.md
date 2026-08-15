@@ -13,7 +13,7 @@ A run measures every package manager, appends the timings to `results/<manager>/
 
 `pnpm run regenerate-svgs` redraws the charts from the recorded YAML without measuring anything.
 
-npm, pnpm, and Bun are installed from the registry by the benchmark itself. Yarn is not on the registry anymore — Yarn 6 ships as a platform binary — so it is downloaded from its release channel instead, which needs `unzip` on `PATH`.
+The benchmark installs every measured package manager itself, with pnpm 12: it bootstraps a `pnpm@next-12` and uses `pnpm add --global` / `pnpm self-update` to provision npm, pnpm, Yarn, and Bun — each into an isolated directory of its own (`setupPackageManagers.js`). That covers Yarn 6, which is not on the registry anymore — it ships as a platform binary that pnpm fetches from Yarn's GitHub releases. GitHub rate-limits anonymous API calls, so on CI a `GITHUB_TOKEN` should be exported for the release-list request.
 
 ## The registry the install benchmark runs against
 
