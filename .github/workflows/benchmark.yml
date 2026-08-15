@@ -17,12 +17,11 @@ jobs:
         with:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
           fetch-depth: 0
-      # The harness's own pnpm — at the version the repo's `packageManager`
-      # field pins — and the Node.js it runs on. The step also runs
-      # `pnpm install` for the harness.
+      # The harness's own pnpm and the Node.js it runs on, both at the
+      # versions package.json pins (`packageManager` and
+      # `devEngines.runtime`). The step also runs `pnpm install` for the
+      # harness.
       - uses: pnpm/setup@v2
-        with:
-          runtime: node@24
       # fnm is compared against pnpm in the Node.js version management section.
       - name: Install fnm
         run: |

@@ -31,5 +31,12 @@
     "engines": {
         "pnpm": "9 || 10 || 11"
     },
+    "devEngines": {
+        "runtime": {
+            "name": "node",
+            "version": "^24.0.0",
+            "onFail": "download"
+        }
+    },
     "packageManager": "pnpm@11.8.0"
 }
