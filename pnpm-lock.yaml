@@ -1,3 +1,104 @@
+---
+lockfileVersion: '9.0'
+
+importers:
+
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: ^12.0.0-rc.6
+        version: 12.0.0-rc.6
+
+packages:
+
+  '@pnpm/exe.darwin-arm64@12.0.0-rc.6':
+    resolution: {integrity: sha512-m57z/dG0gzeh4rCApyLaHbaLh+4SwOiIoEQAyYUvY/YVVThBY4PrgJIE/0jxfNe9WeJR2cGO6W0ehiQ9LZ4csg==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@pnpm/exe.darwin-x64@12.0.0-rc.6':
+    resolution: {integrity: sha512-Kqojv9k2hrAoUKEa+U2J1nMcYGZnxBnZ90Al7RMavfcKIDE13GdnWMaeiNKFBWoyPdYgtR2qCtwyjAprWSUstg==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@pnpm/exe.linux-arm64-musl@12.0.0-rc.6':
+    resolution: {integrity: sha512-FGeJUQ9Pralhzibl1o5QZUPhPIIWbomoeJG5Gm2HFFNEkvDWm+MwRw5eRnPdb+zyGtrXfQAc7eZtMgLQh/tuVg==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@pnpm/exe.linux-arm64@12.0.0-rc.6':
+    resolution: {integrity: sha512-/S+hdo/9b8jOa74bpF7p+rTKUlqvsSLGLaCtNAyH+PjEKmTsbOKDinTeFM4MJK+6qEipigmrnSYrt66AwuT+CA==}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.linux-x64-musl@12.0.0-rc.6':
+    resolution: {integrity: sha512-Sn88BvO6o1ChhP63qA/J96tWI+WBDtN57ZycUfl3ZV8n4ccmETYkWMRo4JaCexaMZI/b5U17neoBUo0MHZChHQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@pnpm/exe.linux-x64@12.0.0-rc.6':
+    resolution: {integrity: sha512-gCeOwlSLqMo0J/X4pH9yDH0GpZ+FAxHuFHGdedN7YKhCKxacUt+b4m74xSaBgSK2r4eHYR9bGCsLqSQ9ZaERTQ==}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@pnpm/exe.win32-arm64@12.0.0-rc.6':
+    resolution: {integrity: sha512-q7b2oxEcCBTBTh15qORCfCZfa3EHoNiIPdHJCS1Vs1tvv2qPys2AW9FpSwdPY6N9zb419CDQxb+Cwjfe2n/ZjQ==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@pnpm/exe.win32-x64@12.0.0-rc.6':
+    resolution: {integrity: sha512-YBFLDcLgl60ssEeLJlBikCwK0LIjbmeVngA/0hu2MTvbbkV1GQcNlFKuVpG5OLW17PH5YGydIAbs0qEf0PQPiA==}
+    cpu: [x64]
+    os: [win32]
+
+  pnpm@12.0.0-rc.6:
+    resolution: {integrity: sha512-OSf85JwwVLflVB3HILzntOurB/RWL6b/zns5cgol5qdn12OEmE4iZcgAeZYT9/ecXEIun1ztybZs//0Iyjx3qQ==}
+    engines: {node: '>=18.*'}
+    hasBin: true
+
+snapshots:
+
+  '@pnpm/exe.darwin-arm64@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.darwin-x64@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.linux-arm64-musl@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.linux-arm64@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.linux-x64-musl@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.linux-x64@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.win32-arm64@12.0.0-rc.6':
+    optional: true
+
+  '@pnpm/exe.win32-x64@12.0.0-rc.6':
+    optional: true
+
+  pnpm@12.0.0-rc.6:
+    optionalDependencies:
+      '@pnpm/exe.darwin-arm64': 12.0.0-rc.6
+      '@pnpm/exe.darwin-x64': 12.0.0-rc.6
+      '@pnpm/exe.linux-arm64': 12.0.0-rc.6
+      '@pnpm/exe.linux-arm64-musl': 12.0.0-rc.6
+      '@pnpm/exe.linux-x64': 12.0.0-rc.6
+      '@pnpm/exe.linux-x64-musl': 12.0.0-rc.6
+      '@pnpm/exe.win32-arm64': 12.0.0-rc.6
+      '@pnpm/exe.win32-x64': 12.0.0-rc.6
+
+---
 lockfileVersion: '9.0'
 
 settings:
@@ -47,6 +148,10 @@ importers:
       write-yaml-file:
         specifier: ^4.2.0
         version: 4.2.0
+    devDependencies:
+      node:
+        specifier: runtime:^24.0.0
+        version: runtime:24.19.0
 
 packages:
 
@@ -246,6 +351,127 @@ packages:
   minipass@7.0.4:
     resolution: {integrity: sha512-jYofLM5Dam9279rdkWzqHozUo4ybjdZmCsDHePy5V/PbBcVMiSZR97gmAy45aqi8CK1lG2ECd356FU86avfwUQ==}
     engines: {node: '>=16 || 14 >=14.17'}
+
+  node@runtime:24.19.0:
+    resolution:
+      type: variations
+      variants:
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-9ONcExZd5ogMqiVYwKpIyoitpH/iI0vtB9Ztu4CkfI0=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-aix-ppc64.tar.gz
+          targets:
+            - cpu: ppc64
+              os: aix
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-gpS3qpsDmXSBwGur8eiycMhZNY8n2lehFQmv5TesOB0=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-darwin-arm64.tar.gz
+          targets:
+            - cpu: arm64
+              os: darwin
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-0bXpmdsVjGL+j3JnpEdrA12L2TsaYFusJKPw3RZuMxY=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-darwin-x64.tar.gz
+          targets:
+            - cpu: x64
+              os: darwin
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-0oyKW/CoCPDtQ0odzoxUrpjwNxwL2GrFirxhP3PmZD8=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-arm64.tar.gz
+          targets:
+            - cpu: arm64
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-sxqMTLxYn5FS8y/bQxhGl1nhZViltdk7f/L7KHsBPbI=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-ppc64le.tar.gz
+          targets:
+            - cpu: ppc64le
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-s6tqQ5KCjbn9TtloOY1VGIKSvMFYGVQtU74LEQDjMvw=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-s390x.tar.gz
+          targets:
+            - cpu: s390x
+              os: linux
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-9iXZfNcH30/5YlSRb7xf8BTwnAnv/loeDKj21BqHidQ=
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-x64.tar.gz
+          targets:
+            - cpu: x64
+              os: linux
+        - resolution:
+            archive: zip
+            bin:
+              node: node.exe
+            integrity: sha256-hQL0pQtFjUzDjtjyABVWws0jnUZJIPdAF5Jsyx4cFX8=
+            prefix: node-v24.19.0-win-arm64
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-win-arm64.zip
+          targets:
+            - cpu: arm64
+              os: win32
+        - resolution:
+            archive: zip
+            bin:
+              node: node.exe
+            integrity: sha256-V/cas2UueX2ErN3HnIHMn/HG3bKhl0zbg/AP7pv/THM=
+            prefix: node-v24.19.0-win-x64
+            type: binary
+            url: https://nodejs.org/download/release/v24.19.0/node-v24.19.0-win-x64.zip
+          targets:
+            - cpu: x64
+              os: win32
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-IIJOTTWUj65bM33M70eBOwTYmVMS9Z33OG8iVtn5q34=
+            type: binary
+            url: https://unofficial-builds.nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-arm64-musl.tar.gz
+          targets:
+            - cpu: arm64
+              os: linux
+              libc: musl
+        - resolution:
+            archive: tarball
+            bin:
+              node: bin/node
+            integrity: sha256-xgIjeG3xSl0j4iDruOYDGPUyJkCmL5Dm2eVNOhjaUy4=
+            type: binary
+            url: https://unofficial-builds.nodejs.org/download/release/v24.19.0/node-v24.19.0-linux-x64-musl.tar.gz
+          targets:
+            - cpu: x64
+              os: linux
+              libc: musl
+    version: 24.19.0
+    hasBin: true
 
   nopt@1.0.10:
     resolution: {integrity: sha512-NWmpvLSqUrgrAC9HCuxEvb+PSloHpqVu+FqcO4eeF2h5qYRhA7ev6KvelyQAKtegUbC6RypJnlEOhd8vloNKYg==}
@@ -572,6 +798,8 @@ snapshots:
   minipass@4.2.8: {}
 
   minipass@7.0.4: {}
+
+  node@runtime:24.19.0: {}
 
   nopt@1.0.10:
     dependencies:
