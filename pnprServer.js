@@ -3,7 +3,7 @@ import fs from 'fs'
 import net from 'net'
 import path from 'path'
 import spawn from 'cross-spawn'
-import { createEnv } from './benchmarkFixture.js'
+import { createEnv, applyPnprServerRegistry, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
 
 /**
  * Takes a port the operating system says is free.
@@ -80,6 +80,15 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     'defaultRegistry: npmjs',
     'resolver:',
     '  enabled: true',
+    // The accelerated scenario asks the server to resolve against this
+    // address — its own un-proxied one — so the resolver's metadata fetches
+    // stay on loopback instead of crossing the emulated link and coming back
+    // in through the front door (see `applyPnprServerRegistry`). The server
+    // resolves against whatever registry the client sends but only if that
+    // registry is declared, so the address has to be listed as a route here.
+    'routes:',
+    '  public:',
+    `    - registry: http://127.0.0.1:${port}`,
     'log:',
     '  type: stdout',
     '  format: pretty',
@@ -201,6 +210,12 @@ export async function mintToken (url) {
  * Fills pnpr's cache by installing the fixture once, untimed and without the
  * emulated link in the way. Without this the first manager measured would pay
  * for pulling every package from npmjs into pnpr and the rest would not.
+ *
+ * It installs twice: once with the fixture as it is, and once with the
+ * dependencies the `updatedDependencies` scenario adds. That scenario
+ * installs a different graph than the fixture's, and a registry warmed only
+ * for the fixture would make the first manager's measured update run the one
+ * that pulls the whole updated graph out of npmjs.
  */
 export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
   const cwd = path.join(dir, 'populate')
@@ -213,15 +228,24 @@ export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
   // nothing to do with the fixture.
   fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), "packages:\n  - '.'\n")
 
-  const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
-    cwd,
-    env: createEnv(managersDir),
-    stdio: 'inherit',
-  })
-  if (result.error) throw result.error
-  if (result.status !== 0) {
-    throw new Error(`Populating the pnpr cache failed with status code ${result.status}`)
+  const install = (label) => {
+    const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
+      cwd,
+      env: createEnv(managersDir),
+      stdio: 'inherit',
+    })
+    if (result.error) throw result.error
+    if (result.status !== 0) {
+      throw new Error(`Populating the pnpr cache (${label}) failed with status code ${result.status}`)
+    }
   }
+  install('fixture')
+
+  const packageJsonPath = path.join(cwd, 'package.json')
+  const manifest = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  manifest.dependencies = { ...manifest.dependencies, ...UPDATED_DEPENDENCIES }
+  fs.writeFileSync(packageJsonPath, JSON.stringify(manifest))
+  install('updated dependencies')
 }
 
 /**
@@ -231,7 +255,7 @@ export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
  * accelerated row into a copy of the plain pnpm row, so it is checked here
  * with one untimed install rather than during a measured one.
  */
-export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToken, pnprServer, fixtureDir, serverLog }) {
+export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToken, pnprServer, pnprServerRegistry, fixtureDir, serverLog }) {
   const cwd = path.join(dir, 'verify')
   fs.rmSync(cwd, { recursive: true, force: true })
   fs.mkdirSync(cwd, { recursive: true })
@@ -246,6 +270,11 @@ export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToke
   const resolveCalls = () => (serverLog().match(/uri=\/-\/pnpr\/v0\/resolve/g) ?? []).length
   const before = resolveCalls()
   const env = createEnv(managersDir)
+  if (pnprServerRegistry) {
+    // Verified under the same override the measured scenario runs with, so
+    // what this proves is the configuration that is actually measured.
+    applyPnprServerRegistry(env, pnprServerRegistry)
+  }
   if (pm.rustEngine) {
     // Same store redirection the measured scenarios get: pnpm 12 keeps its
     // store at $PNPM_HOME/store, and this one-off install should not write
