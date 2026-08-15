@@ -278,10 +278,12 @@ export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToke
     applyPnprServerRegistry(env, pnprServerRegistry)
   }
   if (pm.rustEngine) {
-    // Same store redirection the measured scenarios get: pnpm 12 keeps its
-    // store at $PNPM_HOME/store, and this one-off install should not write
-    // into the machine's real store.
+    // Same store and cache redirection the measured scenarios get: pnpm 12
+    // keeps its store at $PNPM_HOME/store and its packument mirror at the
+    // machine-global cacheDir, and this one-off install should write into
+    // neither the machine's real store nor its real cache.
     env.PNPM_HOME = path.join(cwd, 'cache')
+    env.PNPM_CONFIG_CACHE_DIR = path.join(cwd, 'cache', 'cache')
   }
   const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
     cwd,
