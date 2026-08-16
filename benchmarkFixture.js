@@ -180,9 +180,17 @@ async function writeRegistryConfig (pm, cwd, opts) {
  * zero would leave no verifier configured at all, silently deleting the
  * verification work whose offload to the server the accelerated column
  * exists to measure.
+ *
+ * `registrySupportsTimeField` is what pnpm cannot assume about an arbitrary
+ * registry but the benchmark can state about its own: pnpr serves the
+ * per-version `time` map in its abbreviated metadata precisely so the
+ * release-age check can read it there. Left at its `false` default, pnpm
+ * re-fetches the full packument of every package just to learn publication
+ * dates the abbreviated document already carries — paying for a
+ * conservative assumption, not for the verification itself.
  */
 export function pnpmWorkspaceYaml (opts = {}) {
-  let yaml = "packages:\n  - '.'\n"
+  let yaml = "packages:\n  - '.'\nregistrySupportsTimeField: true\n"
   if (opts.pnprServer) {
     yaml += `pnprServer: ${opts.pnprServer}\n`
   }
