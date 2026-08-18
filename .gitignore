@@ -5,3 +5,5 @@ node_modules
 .tmp
 
 managers
+
+versions.json

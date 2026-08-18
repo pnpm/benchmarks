@@ -5,13 +5,33 @@ on:
     - cron: '30 2 * * 0'
   workflow_dispatch:
 
+# Read-only by default, so the jobs that only measure cannot write to the
+# repository whatever the repository's own default happens to be. The one job
+# that publishes raises this for itself.
+permissions:
+  contents: read
+
 jobs:
-  build:
+  # The samples this run contributes, measured in parallel rather than one
+  # after another. Three measurements of the same thing are what the published
+  # number is a `min()` of, and they are independent of each other: each makes
+  # its own temp directory, provisions its own package managers, and starts its
+  # own registry on a port the system says is free. Run sequentially in one job
+  # they took three times as long as a single measurement for no benefit.
+  #
+  # Three samples rather than one because the page reports the minimum per
+  # package manager *per version*. Cutting to one sample wouldn't only add
+  # noise, it would bias: a version released this week would be a min-of-one
+  # while a long-lived one keeps its min-of-many, which reads as a regression
+  # in whatever was released most recently.
+  benchmark:
+    strategy:
+      # One machine having a bad day shouldn't throw away the samples the
+      # others already measured. The reporting job publishes whatever arrived.
+      fail-fast: false
+      matrix:
+        sample: [1, 2, 3]
     runs-on: ubuntu-latest
-    # The job commits the results it measures back to the branch, which the
-    # default read-only token can't do.
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,12 +57,46 @@ jobs:
       - run: pnpm run benchmark
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: pnpm run benchmark
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: pnpm run benchmark
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Only uploaded when the measurement finished. A run that died partway
+      # recorded some scenarios and not others, and those are exactly the
+      # numbers not to publish.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: samples-${{ matrix.sample }}
+          path: |
+            results
+            versions.json
+          retention-days: 3
+
+  # Draws the page from the samples the jobs above recorded. It measures
+  # nothing itself — no package manager is installed here and no registry is
+  # started — so it can't quietly substitute a number for one a measuring run
+  # failed to record, and it costs seconds rather than minutes.
+  report:
+    needs: benchmark
+    # `needs` alone would skip this job if any one sample failed, throwing away
+    # the two that succeeded.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    # The job commits the results it publishes back to the branch, which the
+    # default read-only token can't do.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: pnpm/setup@v2
+      # Fails when no sample arrived at all, which is the right outcome: with
+      # nothing measured this week, the alternative is republishing last week's
+      # numbers under today's date.
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: samples-*
+          path: samples
+      - run: pnpm run merge-results samples
+      - run: pnpm run report
       - name: Commit & Push changes
         # Pinned: this step is handed a token that can write to the repo, so
         # what runs in it shouldn't be able to change without a commit here.

@@ -40,6 +40,32 @@ export default async function (pm, fixture, opts) {
   return results
 }
 
+/**
+ * Loads results a previous run recorded, without measuring anything.
+ *
+ * This is what lets the measuring runs happen in parallel jobs: each records
+ * its samples, and one job afterwards draws the page from all of them. The
+ * version can't be detected here the way a measuring run detects it — nothing
+ * is installed — so the caller supplies the one the run that measured these
+ * results reported.
+ */
+export async function readRecordedResults (pm, fixture, opts = {}) {
+  const version = opts.version ?? pm.version
+  if (!version) {
+    throw new Error(`No recorded version for ${pm.scenario}, so its results can't be located.`)
+  }
+  pm.version = version
+  const resultsFile = path.join(RESULTS, pm.scenario, version, `${opts.resultsName ?? fixture}.yaml`)
+  const results = await safeLoadYamlFile(resultsFile)
+  if (!results?.length) {
+    throw new Error(
+      `No recorded results at ${resultsFile}. A reporting run draws the page from what a ` +
+      `measuring run recorded; it measures nothing itself.`
+    )
+  }
+  return results
+}
+
 function getPMVersion (pmName, opts) {
   const { status, stdout, stderr } = spawn.sync(pmName, ['--version'], {
     cwd: opts.managersDir,

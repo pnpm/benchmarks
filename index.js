@@ -6,10 +6,11 @@ import commonTags from 'common-tags'
 import prettyMs from 'pretty-ms'
 import tempy from 'tempy'
 import cmdsMap from './commandsMap.js'
-import benchmark from './recordBenchmark.js'
+import nodeManagersMap from './nodeManagersMap.js'
+import benchmark, { readRecordedResults } from './recordBenchmark.js'
 import nodeVersionsSection from './nodeVersionsSection.js'
+import benchmarkNodeVersions, { cloneNvm, readManagerVersion } from './benchmarkNodeVersions.js'
 import { startBenchmarkRegistry, ROUND_TRIP_MS, BANDWIDTH_MBPS, RESULTS_SUFFIX } from './benchmarkRegistry.js'
-import { cloneNvm } from './benchmarkNodeVersions.js'
 import { bootstrapInstaller, provisionPackageManagers } from './setupPackageManagers.js'
 import generateSvg from './generateSvg.js'
 import generateStackedSvg from './generateStackedSvg.js'
@@ -23,6 +24,11 @@ const TMP = path.join(DIRNAME, '.tmp')
 // a consumer of these files — pnpm.io today — can take both across as they are.
 const BENCH_IMGS = path.join(DIRNAME, 'img/benchmarks')
 const BENCH_MD = path.join(DIRNAME, 'benchmarks.md')
+// What a measuring run records about the tools it measured, so that a
+// reporting run can label the page and locate the results without provisioning
+// anything. It belongs to a run rather than to the repository, which is why it
+// is written next to the code and never committed.
+const VERSIONS_FILE = path.join(DIRNAME, 'versions.json')
 
 const { stripIndents } = commonTags
 const LIMIT_RUNS = 30
@@ -50,6 +56,23 @@ const fixtures = [
     mdDesc: '## Lots of Files\n\nThe app\'s `package.json` [here](https://github.com/pnpm/benchmarks/blob/main/fixtures/alotta-files/package.json)'
   }
 ]
+
+// The columns of the table, in the order they appear. A measuring run adds
+// where each manager is installed and how it reaches the registry; a reporting
+// run needs neither, so what is common to both lives here.
+const pmConfigs = [
+  { key: 'npm' },
+  { key: 'pnpm11' },
+  { key: 'pnpm12' },
+  // The same pnpm 12 as the row above, resolving the dependency graph on the
+  // registry instead of walking it itself, so pnpr is the only difference
+  // between the two.
+  { key: 'pnpm_pnpr' },
+  { key: 'yarn' },
+  { key: 'yarn_pnp', hasNodeModules: false },
+  { key: 'bun' },
+]
+const pms = pmConfigs.map(({ key }) => key)
 
 const tests = [
   'firstInstall',
@@ -124,7 +147,110 @@ run()
     process.exitCode = 1
   })
 
+/**
+ * `--report-only` rebuilds the page from results already recorded, without
+ * provisioning a package manager or starting a registry.
+ *
+ * That is what lets the measuring runs happen in parallel jobs: each of them
+ * records its samples and reports the versions it measured, and one job
+ * afterwards merges those samples and draws the page from them. A reporting
+ * run measures nothing, so it can't invent a number a measuring run failed to
+ * record — it fails instead.
+ */
 async function run () {
+  if (process.argv.includes('--report-only')) {
+    await report()
+    return
+  }
+  await measure()
+}
+
+function formatNow () {
+  return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
+}
+
+async function report () {
+  const versionsFile = process.env.BENCHMARK_VERSIONS ?? VERSIONS_FILE
+  let versions
+  try {
+    versions = JSON.parse(fs.readFileSync(versionsFile, 'utf8'))
+  } catch (err) {
+    throw new Error(
+      `Couldn't read the versions a measuring run recorded at ${versionsFile}. ` +
+      `A reporting run needs it to label the page and to find the results. ${err.message}`
+    )
+  }
+  // The manifest crosses a job boundary, so it is worth insisting on rather
+  // than reading hopefully. A missing package manager would at least be caught
+  // downstream by the results not being where its version says they are, but a
+  // missing pnpr version is caught nowhere: the page would go out saying the
+  // registry it was measured against was `vundefined`.
+  for (const field of ['node', 'pnpr', 'packageManagers', 'nodeManagers']) {
+    if (versions?.[field] == null) {
+      throw new Error(`The versions recorded at ${versionsFile} carry no \`${field}\`.`)
+    }
+  }
+  for (const { key } of pmConfigs) {
+    if (!versions.packageManagers[key]) {
+      throw new Error(`The versions recorded at ${versionsFile} carry no version for the ${key} column.`)
+    }
+  }
+  // The same check for the Node.js section, over the tools the manifest is
+  // written from, so what is demanded here is exactly what a measuring run
+  // records.
+  for (const key of Object.keys(nodeManagersMap)) {
+    if (!versions.nodeManagers[key]) {
+      throw new Error(`The versions recorded at ${versionsFile} carry no version for ${key} in the Node.js section.`)
+    }
+  }
+  const formattedNow = formatNow()
+  // The same command objects the measuring run drew from, carrying the
+  // versions it measured rather than versions detected here — nothing is
+  // installed in a reporting run to detect them from.
+  const pmCommands = Object.fromEntries(
+    Object.entries(cmdsMap).map(([key, pm]) => [key, { ...pm, version: versions.packageManagers[key] }])
+  )
+  const { sections, svgs, sortedTests } = await benchmarkFixtures({
+    pmCommands,
+    formattedNow,
+    nodeVersion: versions.node,
+    runFixture: ({ key }, fixtureName) => readRecordedResults(pmCommands[key], fixtureName, {
+      resultsName: `${fixtureName}${RESULTS_SUFFIX}`,
+    }),
+  })
+  const nodeVersions = await nodeVersionsSection({
+    formattedNow,
+    svgName: NODE_VERSIONS_SVG,
+    nodeVersion: versions.node,
+    runManager: (pm) => readRecordedResults(pm, 'node-versions', {
+      version: versions.nodeManagers[pm.scenario],
+    }),
+  })
+  sections.push(nodeVersions.section)
+  svgs.push({
+    path: path.join(BENCH_IMGS, `${NODE_VERSIONS_SVG}.svg`),
+    file: nodeVersions.svg,
+  })
+  await writePage({ formattedNow, registryVersion: versions.pnpr, sections, svgs, sortedTests })
+}
+
+/**
+ * Records what a reporting run needs and cannot work out for itself: which
+ * version of each tool these results were measured with, and on which Node.js.
+ */
+function writeVersionsManifest ({ pmCommands, registryVersion }) {
+  const versionsOf = (map) => Object.fromEntries(
+    Object.entries(map).map(([key, pm]) => [key, pm.version])
+  )
+  fs.writeFileSync(VERSIONS_FILE, `${JSON.stringify({
+    node: process.version,
+    pnpr: registryVersion,
+    packageManagers: versionsOf(pmCommands),
+    nodeManagers: versionsOf(nodeManagersMap),
+  }, null, 2)}\n`, 'utf8')
+}
+
+async function measure () {
   const tmpDir = tempy.directory()
   const managersDirs = {}
   for (const pm of ['npm', 'pnpm11', 'pnpm12', 'yarn', 'bun', 'fnm', 'nvm', 'pnpr']) {
@@ -150,7 +276,7 @@ async function run () {
   const installerPnpm = bootstrapInstaller(path.join(tmpDir, 'setup'))
   provisionPackageManagers(installerPnpm, managersDirs)
   cloneNvm(managersDirs.nvm)
-  const formattedNow = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
+  const formattedNow = formatNow()
   // Every package manager installs through the same registry of our own,
   // reached across an emulated network link. A registry on the benchmark
   // machine itself would hide what resolving a dependency graph costs, which is
@@ -165,30 +291,51 @@ async function run () {
   const pmCommands = Object.fromEntries(
     Object.entries(cmdsMap).map(([key, pm]) => [key, registry.withRegistry(pm)])
   )
-  const pmConfigs = [
-    { key: 'npm', managersDir: managersDirs.npm },
-    { key: 'pnpm11', managersDir: managersDirs.pnpm11 },
-    { key: 'pnpm12', managersDir: managersDirs.pnpm12 },
-    // The same pnpm 12 as the row above, resolving the dependency graph on
-    // the registry instead of walking it itself, so pnpr is the only
-    // difference between the two. The server does that resolving against its
-    // own un-proxied address: it models a resolver co-located with the
-    // registry, not one reaching its own metadata across the client's link.
-    {
-      key: 'pnpm_pnpr',
+  // Where each manager is installed, and — for the accelerated column — the
+  // server it offloads resolution to. That server resolves against its own
+  // un-proxied address: it models a resolver co-located with the registry, not
+  // one reaching its own metadata across the client's link.
+  const measuredConfig = {
+    npm: { managersDir: managersDirs.npm },
+    pnpm11: { managersDir: managersDirs.pnpm11 },
+    pnpm12: { managersDir: managersDirs.pnpm12 },
+    pnpm_pnpr: {
       managersDir: managersDirs.pnpm12,
       pnprServer: registry.resolverUrl,
       pnprServerRegistry: registry.serverDirectUrl,
       authToken: registry.authToken,
     },
-    { key: 'yarn', managersDir: managersDirs.yarn },
-    { key: 'yarn_pnp', managersDir: managersDirs.yarn, hasNodeModules: false },
-    { key: 'bun', managersDir: managersDirs.bun },
-  ]
-  const pms = pmConfigs.map(({ key }) => key)
+    yarn: { managersDir: managersDirs.yarn },
+    yarn_pnp: { managersDir: managersDirs.yarn },
+    bun: { managersDir: managersDirs.bun },
+  }
+  // A column with nowhere to install from would otherwise fail eight minutes
+  // into the run, on the manager it was mistyped for.
+  for (const { key } of pmConfigs) {
+    if (!measuredConfig[key]) {
+      throw new Error(`No install directory configured for the ${key} column.`)
+    }
+  }
+  const runFixture = async ({ key, hasNodeModules }, fixtureName) => {
+    const results = await benchmark(pmCommands[key], fixtureName, {
+      limitRuns: LIMIT_RUNS,
+      // Filed under a name of their own: these runs are measured against our
+      // own registry over an emulated link, so pooling them with the runs
+      // recorded before that would average two unrelated things.
+      resultsName: `${fixtureName}${RESULTS_SUFFIX}`,
+      hasNodeModules: hasNodeModules ?? true,
+      registry: registry.url,
+      ...measuredConfig[key],
+    })
+    // Checked after every manager rather than only at the end, so a link or a
+    // registry that died is reported against the run that lost it instead of
+    // silently devaluing everything measured afterwards.
+    registry.assertAlive()
+    return results
+  }
   let fixtureResults
   try {
-    fixtureResults = await benchmarkFixtures({ pmConfigs, pmCommands, pms, registry, formattedNow })
+    fixtureResults = await benchmarkFixtures({ pmCommands, formattedNow, runFixture })
   } finally {
     // The registry and the links in front of it are processes of their own.
     // One left running holds its port and would answer the next run in the
@@ -199,10 +346,14 @@ async function run () {
   const { sections, svgs, sortedTests } = fixtureResults
 
   const nodeVersions = await nodeVersionsSection({
-    managersDirs: { pnpm12: managersDirs.pnpm12, fnm: managersDirs.fnm, nvm: managersDirs.nvm },
     formattedNow,
-    limitRuns: LIMIT_RUNS,
     svgName: NODE_VERSIONS_SVG,
+    runManager: (pm) => benchmark(pm, 'node-versions', {
+      limitRuns: LIMIT_RUNS,
+      managersDir: managersDirs[pm.scenario],
+      getVersion: readManagerVersion,
+      benchmarkFn: (manager, _fixture, opts) => benchmarkNodeVersions(manager, opts),
+    }),
   })
   sections.push(nodeVersions.section)
   svgs.push({
@@ -210,12 +361,22 @@ async function run () {
     file: nodeVersions.svg
   })
 
+  writeVersionsManifest({ pmCommands, registryVersion: registry.version })
+  await writePage({ formattedNow, registryVersion: registry.version, sections, svgs, sortedTests })
+}
+
+/**
+ * Writes the page and the charts it refers to. A measuring run and a reporting
+ * run reach here with the same material, so there is one copy of it.
+ */
+async function writePage ({ formattedNow, registryVersion, sections, svgs, sortedTests }) {
+  await fs.promises.mkdir(BENCH_IMGS, { recursive: true })
   const introduction = stripIndents`
   # Benchmarks of JavaScript Package Managers
 
   **Last benchmarked at**: _${formattedNow}_ (_daily_ updated).
 
-  This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v${registry.version}) across an emulated ${ROUND_TRIP_MS}ms round trip at ${BANDWIDTH_MBPS} Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
+  This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v${registryVersion}) across an emulated ${ROUND_TRIP_MS}ms round trip at ${BANDWIDTH_MBPS} Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
 
   About the setup:
 
@@ -247,31 +408,20 @@ async function run () {
 }
 
 /**
- * Measures every package manager on every fixture and builds the markdown and
- * charts for them.
+ * Builds the markdown and charts for every package manager on every fixture.
+ *
+ * `runFixture` supplies one manager's results on one fixture: a measuring run
+ * measures them, a reporting run reads back what a measuring run recorded.
+ * Everything below only draws, so it is the same either way.
  */
-async function benchmarkFixtures ({ pmConfigs, pmCommands, pms, registry, formattedNow }) {
+async function benchmarkFixtures ({ pmCommands, formattedNow, nodeVersion, runFixture }) {
   const sections = []
   const svgs = []
   let sortedTests = tests
   for (const fixture of fixtures) {
     const results = {}
-    for (const { key, managersDir, hasNodeModules, ...rest } of pmConfigs) {
-      results[key] = min(await benchmark(pmCommands[key], fixture.name, {
-        limitRuns: LIMIT_RUNS,
-        // Filed under a name of their own: these runs are measured against our
-        // own registry over an emulated link, so pooling them with the runs
-        // recorded before that would average two unrelated things.
-        resultsName: `${fixture.name}${RESULTS_SUFFIX}`,
-        hasNodeModules: hasNodeModules ?? true,
-        managersDir,
-        registry: registry.url,
-        ...rest,
-      }))
-      // Checked after every manager rather than only at the end, so a link or a
-      // registry that died is reported against the run that lost it instead of
-      // silently devaluing everything measured afterwards.
-      registry.assertAlive()
+    for (const config of pmConfigs) {
+      results[config.key] = min(await runFixture(config, fixture.name))
     }
     sortedTests = sortTestsBySlowest(tests, results, pms)
     const sortedDescriptions = sortedTests.map(t => testDescriptions[t])
@@ -315,7 +465,7 @@ async function benchmarkFixtures ({ pmConfigs, pmCommands, pms, registry, format
         }
       : Math.round(results[bar.key][test] / 100) / 10
     ))
-    const mainSvg = generateSvg(resArray, mainBars, sortedDescriptions, formattedNow)
+    const mainSvg = generateSvg(resArray, mainBars, sortedDescriptions, formattedNow, nodeVersion)
     const mainSvgHash = hashContent(mainSvg)
     sections.push(stripIndents`
       ${fixture.mdDesc}
@@ -359,7 +509,7 @@ async function benchmarkFixtures ({ pmConfigs, pmCommands, pms, registry, format
       v11: Math.round(results.pnpm11[test] / 100) / 10,
       v12: Math.round(results.pnpm12[test] / 100) / 10,
     }))
-    const pnpmSvg = generateStackedSvg(stackedResults, formattedNow)
+    const pnpmSvg = generateStackedSvg(stackedResults, formattedNow, nodeVersion)
     const pnpmSvgHash = hashContent(pnpmSvg)
     sections.push(stripIndents`
       ### ${pnpmTitle}
