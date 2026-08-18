@@ -195,6 +195,14 @@ async function report () {
       throw new Error(`The versions recorded at ${versionsFile} carry no version for the ${key} column.`)
     }
   }
+  // The same check for the Node.js section, over the tools the manifest is
+  // written from, so what is demanded here is exactly what a measuring run
+  // records.
+  for (const key of Object.keys(nodeManagersMap)) {
+    if (!versions.nodeManagers[key]) {
+      throw new Error(`The versions recorded at ${versionsFile} carry no version for ${key} in the Node.js section.`)
+    }
+  }
   const formattedNow = formatNow()
   // The same command objects the measuring run drew from, carrying the
   // versions it measured rather than versions detected here — nothing is
