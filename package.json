@@ -10,6 +10,8 @@
     "license": "MIT",
     "scripts": {
         "benchmark": "node ./index.js",
+        "report": "node ./index.js --report-only",
+        "merge-results": "node ./mergeResults.js",
         "regenerate-svgs": "node ./regenerate-svgs.mjs",
         "test": "node --test latencyProxy.test.mjs"
     },

@@ -17,7 +17,9 @@ const getHighestNumber = (resultArrays) => {
   return max
 }
 
-export default (resultArrays, pms, tests, formattedNow) => {
+// `nodeVersion` is the Node.js the results were measured on. A reporting run
+// draws a page it did not measure, so it can't use its own `process.version`.
+export default (resultArrays, pms, tests, formattedNow, nodeVersion = process.version) => {
   let svgStr = ''
   // Expand stacked PM slots into two legend entries (primary + extra).
   const legendEntries = pms.flatMap((pm) => pm.stacked
@@ -217,7 +219,7 @@ export default (resultArrays, pms, tests, formattedNow) => {
 
   // add node version
   ;(() => {
-    const text = `Tests were run using Node.js ${process.version} at: ${formattedNow}`
+    const text = `Tests were run using Node.js ${nodeVersion} at: ${formattedNow}`
     const anchor = 'end'
     const x = graph.x + graph.w
     const y = vb.h - 2

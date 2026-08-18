@@ -3,8 +3,7 @@ import crypto from 'crypto'
 import commonTags from 'common-tags'
 import prettyMs from 'pretty-ms'
 import nodeManagersMap from './nodeManagersMap.js'
-import recordBenchmark from './recordBenchmark.js'
-import benchmarkNodeVersions, { PRIMARY_NODE_VERSION, SECONDARY_NODE_VERSION, readManagerVersion } from './benchmarkNodeVersions.js'
+import { PRIMARY_NODE_VERSION, SECONDARY_NODE_VERSION } from './benchmarkNodeVersions.js'
 import generateSvg from './generateSvg.js'
 
 const { stripIndents } = commonTags
@@ -33,18 +32,17 @@ const chartLabels = {
 }
 
 /**
- * Benchmarks pnpm against the other Node.js version managers on installing and
+ * Compares pnpm against the other Node.js version managers on installing and
  * switching Node.js versions and returns the markdown section and the chart.
+ *
+ * `runManager` supplies one manager's results: a measuring run measures them,
+ * a reporting run reads back what a measuring run recorded. Everything below
+ * only draws, so it is the same either way.
  */
-export default async function nodeVersionsSection ({ managersDirs, formattedNow, limitRuns, svgName }) {
+export default async function nodeVersionsSection ({ formattedNow, svgName, nodeVersion, runManager }) {
   const results = {}
   for (const key of managers) {
-    results[key] = min(await recordBenchmark(nodeManagersMap[key], 'node-versions', {
-      limitRuns,
-      managersDir: managersDirs[key],
-      getVersion: readManagerVersion,
-      benchmarkFn: (pm, _fixture, opts) => benchmarkNodeVersions(pm, opts),
-    }))
+    results[key] = min(await runManager(nodeManagersMap[key]))
   }
 
   const headerLegends = managers.map((key) => nodeManagersMap[key].mdLegend ?? nodeManagersMap[key].legend).join(' | ')
@@ -56,7 +54,7 @@ export default async function nodeVersionsSection ({ managersDirs, formattedNow,
 
   const bars = managers.map((key) => ({ ...nodeManagersMap[key], key }))
   const resArray = chartTests.map((test) => bars.map((bar) => Math.round(results[bar.key][test] / 100) / 10))
-  const svg = generateSvg(resArray, bars, chartTests.map((test) => chartLabels[test]), formattedNow)
+  const svg = generateSvg(resArray, bars, chartTests.map((test) => chartLabels[test]), formattedNow, nodeVersion)
   const svgHash = hashContent(svg)
 
   const section = stripIndents`

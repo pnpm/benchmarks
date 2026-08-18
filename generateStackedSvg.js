@@ -4,7 +4,8 @@
 
 const getMax = (results) => Math.max(...results.map((r) => r.v11))
 
-export default (results, formattedNow) => {
+// `nodeVersion`: see the note in `generateSvg.js`.
+export default (results, formattedNow, nodeVersion = process.version) => {
   const v12Color = '#fbae00'
   const extraColor = '#cccccc'
 
@@ -102,7 +103,7 @@ export default (results, formattedNow) => {
     })
   })
 
-  svgStr += `  <text x="${graph.x + graph.w}" y="${vb.h - 2}" class="font s4 text" text-anchor="end">Tests were run using Node.js ${process.version} at: ${formattedNow}</text>\n`
+  svgStr += `  <text x="${graph.x + graph.w}" y="${vb.h - 2}" class="font s4 text" text-anchor="end">Tests were run using Node.js ${nodeVersion} at: ${formattedNow}</text>\n`
 
   svgStr += '</svg>\n'
   return svgStr
