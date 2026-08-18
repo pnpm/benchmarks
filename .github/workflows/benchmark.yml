@@ -5,6 +5,12 @@ on:
     - cron: '30 2 * * 0'
   workflow_dispatch:
 
+# Read-only by default, so the jobs that only measure cannot write to the
+# repository whatever the repository's own default happens to be. The one job
+# that publishes raises this for itself.
+permissions:
+  contents: read
+
 jobs:
   # The samples this run contributes, measured in parallel rather than one
   # after another. Three measurements of the same thing are what the published

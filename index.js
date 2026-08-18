@@ -180,6 +180,21 @@ async function report () {
       `A reporting run needs it to label the page and to find the results. ${err.message}`
     )
   }
+  // The manifest crosses a job boundary, so it is worth insisting on rather
+  // than reading hopefully. A missing package manager would at least be caught
+  // downstream by the results not being where its version says they are, but a
+  // missing pnpr version is caught nowhere: the page would go out saying the
+  // registry it was measured against was `vundefined`.
+  for (const field of ['node', 'pnpr', 'packageManagers', 'nodeManagers']) {
+    if (versions?.[field] == null) {
+      throw new Error(`The versions recorded at ${versionsFile} carry no \`${field}\`.`)
+    }
+  }
+  for (const { key } of pmConfigs) {
+    if (!versions.packageManagers[key]) {
+      throw new Error(`The versions recorded at ${versionsFile} carry no version for the ${key} column.`)
+    }
+  }
   const formattedNow = formatNow()
   // The same command objects the measuring run drew from, carrying the
   // versions it measured rather than versions detected here — nothing is
