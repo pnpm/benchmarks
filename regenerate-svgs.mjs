@@ -39,12 +39,12 @@ const tests = [
 const testDescriptions = {
   firstInstall:               ['clean'],
   withWarmModules:            ['node_modules'],
-  withLockfile:               ['lockfile'],
+  withLockfile:               ['trusted lockfile'],
   withWarmCacheAndModules:    ['cache', 'node_modules'],
   withWarmCache:              ['cache'],
-  withWarmCacheAndLockfile:   ['cache', 'lockfile'],
-  withWarmModulesAndLockfile: ['lockfile', 'node_modules'],
-  repeatInstall:              ['cache', 'lockfile', 'node_modules'],
+  withWarmCacheAndLockfile:   ['cache', 'trusted lockfile'],
+  withWarmModulesAndLockfile: ['trusted lockfile', 'node_modules'],
+  repeatInstall:              ['cache', 'trusted lockfile', 'node_modules'],
   updatedDependencies:        ['update'],
 }
 
