@@ -47,7 +47,18 @@ async function main () {
   if (!samplesDir) {
     throw new Error('Usage: node mergeResults.js <dir containing one subdirectory per run>')
   }
-  const runDirs = fs.readdirSync(samplesDir, { withFileTypes: true })
+  // A samples directory that doesn't exist means no measuring job uploaded
+  // anything — every one of them failed. That is the same situation as an
+  // empty directory, and it deserves the same explanation rather than a raw
+  // ENOENT from `readdirSync`.
+  let entries
+  try {
+    entries = fs.readdirSync(samplesDir, { withFileTypes: true })
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err
+    entries = []
+  }
+  const runDirs = entries
     .filter((entry) => entry.isDirectory())
     // Sorted so that a merge of the same runs always produces the same file,
     // whatever order the artifacts happened to be downloaded in.

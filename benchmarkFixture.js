@@ -406,6 +406,12 @@ export default async function benchmark (pm, fixture, opts) {
         if (err?.code !== 'ENOENT') throw err
       }
     }
+    // The cache dir may not exist right now: it was deleted two rows up, and
+    // a manager whose `node_modules` row is a registry-free no-op (pnpm
+    // restores the tree from the lockfile copy inside it) never recreated
+    // it. A symlink to a path that isn't there is dangling, and the warm-up
+    // install fails trying to mkdir its store through it.
+    await fs.mkdir(path.join(cwd, 'cache'), { recursive: true })
     await fs.symlink(path.join(cwd, 'cache'), path.join(rewarmDir, 'cache'), 'dir')
     measureInstall(pm, rewarmDir, env)
   } finally {
