@@ -9,6 +9,11 @@ import { fileURLToPath } from 'url'
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 const RESULTS = path.join(DIRNAME, 'results')
 
+// How many samples of one package manager on one version are kept. Lives here
+// because this is where a measuring run stops adding them, and `mergeResults`
+// has to hold the same bound when it folds several runs' samples together.
+export const LIMIT_RUNS = 30
+
 export default async function (pm, fixture, opts) {
   opts = opts || {}
   const limitRuns = opts.limitRuns || Infinity
