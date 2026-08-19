@@ -393,16 +393,24 @@ export default async function benchmark (pm, fixture, opts) {
   const rewarmDir = path.join(cwd, '.rewarm')
   rimraf.sync(rewarmDir)
   await fs.mkdir(rewarmDir, { recursive: true })
-  for (const name of ['package.json', '.npmrc', 'pnpm-workspace.yaml', '.yarnrc.yml', '.yarnrc']) {
-    try {
-      cpSync(path.join(cwd, name), path.join(rewarmDir, name))
-    } catch {
-      // A file a manager doesn't use was never written; nothing to copy.
+  try {
+    cpSync(path.join(cwd, 'package.json'), path.join(rewarmDir, 'package.json'))
+    for (const name of ['.npmrc', 'pnpm-workspace.yaml', '.yarnrc.yml', '.yarnrc']) {
+      try {
+        cpSync(path.join(cwd, name), path.join(rewarmDir, name))
+      } catch (err) {
+        // A file a manager doesn't use was never written; nothing to copy.
+        // Anything else has to surface: a warm-up that silently lost its
+        // `.npmrc` would run against the public registry and hand the update
+        // row a cache warmed over the wrong network.
+        if (err?.code !== 'ENOENT') throw err
+      }
     }
+    await fs.symlink(path.join(cwd, 'cache'), path.join(rewarmDir, 'cache'), 'dir')
+    measureInstall(pm, rewarmDir, env)
+  } finally {
+    rimraf.sync(rewarmDir)
   }
-  await fs.symlink(path.join(cwd, 'cache'), path.join(rewarmDir, 'cache'), 'dir')
-  measureInstall(pm, rewarmDir, env)
-  rimraf.sync(rewarmDir)
 
   console.log('# with updated dependencies')
 
