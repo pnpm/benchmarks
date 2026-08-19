@@ -171,18 +171,31 @@ async function writeRegistryConfig (pm, cwd, opts) {
  * directory the benchmark doesn't control. When the scenario offloads
  * resolution, `pnprServer` names the server it happens on.
  *
- * `minimumReleaseAge` is deliberately left at pnpm's default here, unlike
- * the directories the managers are installed into. The hold — and the
- * lockfile verification pass it drives — is pnpm's default behavior, so it
- * belongs in the measurement; the client sends the setting along with its
- * resolve and verify-lockfile requests, so the server applies the same
- * cutoff and both pnpm columns still install the same graph. Setting it to
- * zero would leave no verifier configured at all, silently deleting the
- * verification work whose offload to the server the accelerated column
- * exists to measure.
+ * `minimumReleaseAge` is deliberately left at pnpm's default, unlike the
+ * directories the managers are installed into. The hold is pnpm's default
+ * behavior and it shapes what resolution costs, which is the thing the rows
+ * without a lockfile measure; the client sends the setting along with its
+ * resolve request, so the server applies the same cutoff and both pnpm
+ * columns still install the same graph.
+ *
+ * `trustLockfile` turns off the other half of that policy: the supply-chain
+ * pass that re-checks every entry of a lockfile it is about to install. That
+ * pass is not free and it is not comparable — it fetches a packument per
+ * package, measured at 1158 requests on top of the 1346 tarball fetches this
+ * fixture needs, and none of npm, Yarn or Bun does anything of the sort, so
+ * the rows with an up-to-date lockfile were timing pnpm doing work no other
+ * column was asked to do. The rows say `trusted lockfile` for that reason.
+ * pnpm 11 honors the setting too, so all three pnpm columns skip the same
+ * pass and the version comparison stays a comparison.
+ *
+ * It costs the accelerated column its lockfile rows, which is the trade
+ * being made knowingly: pnpr answers that pass in one request where the
+ * client spends a round trip per package, and with nothing to verify the two
+ * pnpm 12 columns now really do measure the same install there — which is
+ * what the page has always claimed of them.
  */
 export function pnpmWorkspaceYaml (opts = {}) {
-  let yaml = "packages:\n  - '.'\n"
+  let yaml = "packages:\n  - '.'\ntrustLockfile: true\n"
   if (opts.pnprServer) {
     yaml += `pnprServer: ${opts.pnprServer}\n`
   }
