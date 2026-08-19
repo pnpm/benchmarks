@@ -375,6 +375,43 @@ export default async function benchmark (pm, fixture, opts) {
     size = await getFolderSize.loose(path.join(cwd, 'cache'))
   }
 
+  console.log('# re-warm the cache for the update scenario (not measured)')
+
+  // The rows above drained the cache twice, and what each manager holds by
+  // now depends on how it behaved on the rows in between — pnpm restores a
+  // warm `node_modules` from the lockfile copy it keeps inside it, touching
+  // the registry not at all, while Bun re-downloads the whole graph on the
+  // same row. Left like that, the update row hands Bun a cache its previous
+  // row just filled and pnpm a cold one, and what gets measured is the
+  // wipe's echo rather than the update. A developer who bumps versions has
+  // the cache their installs left, so every manager gets the base graph
+  // re-warmed here, untimed: a from-scratch resolve-and-fetch in a throwaway
+  // copy of the project whose `cache/` is a symlink into the real one. No
+  // lockfile and no `node_modules` go with it, or the fast managers would
+  // short-circuit and warm nothing, which is how the imbalance arose in the
+  // first place.
+  const rewarmDir = path.join(cwd, '.rewarm')
+  rimraf.sync(rewarmDir)
+  await fs.mkdir(rewarmDir, { recursive: true })
+  try {
+    cpSync(path.join(cwd, 'package.json'), path.join(rewarmDir, 'package.json'))
+    for (const name of ['.npmrc', 'pnpm-workspace.yaml', '.yarnrc.yml', '.yarnrc']) {
+      try {
+        cpSync(path.join(cwd, name), path.join(rewarmDir, name))
+      } catch (err) {
+        // A file a manager doesn't use was never written; nothing to copy.
+        // Anything else has to surface: a warm-up that silently lost its
+        // `.npmrc` would run against the public registry and hand the update
+        // row a cache warmed over the wrong network.
+        if (err?.code !== 'ENOENT') throw err
+      }
+    }
+    await fs.symlink(path.join(cwd, 'cache'), path.join(rewarmDir, 'cache'), 'dir')
+    measureInstall(pm, rewarmDir, env)
+  } finally {
+    rimraf.sync(rewarmDir)
+  }
+
   console.log('# with updated dependencies')
 
   // update all dependency versions to '*' and install again

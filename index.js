@@ -118,7 +118,7 @@ const explanationByTest = {
   withWarmCacheAndLockfile:   '`cache+trusted lockfile`: a developer reinstalling a known project.',
   withWarmModulesAndLockfile: '`trusted lockfile+node_modules`: the cache is deleted and install is run again.',
   repeatInstall:              '`cache+trusted lockfile+node_modules`: re-running install when nothing has changed.',
-  updatedDependencies:        '`update`: dependency versions are bumped in `package.json` and install is run again.',
+  updatedDependencies:        '`update`: dependency versions are bumped in `package.json` and install is run again, from a warm cache.',
 }
 
 // Sort tests by descending time on the first PM (npm) — slowest first.
@@ -384,6 +384,7 @@ async function writePage ({ formattedNow, registryVersion, sections, svgs, sorte
   - **Server-side resolution pays off when there is a graph to resolve.** Resolving one means walking it level by level, and each level costs a round trip, so the cost is roughly the depth of the graph times the latency. pnpr does that walk next to the registry — its own metadata access stays on loopback, the co-located shape the [pnpm monorepo's integrated benchmark](https://github.com/pnpm/pnpm) measures — and answers with the whole resolved lockfile at once, which is why the rows without a lockfile, and the row that changes dependencies, are the ones where it pulls ahead of plain pnpm.
   - **The lockfile is trusted, so every manager is asked for the same work.** pnpm verifies a lockfile against the registry before installing it — a supply-chain pass that costs a packument per package, and one no other manager here performs. The rows with a lockfile run every pnpm column with [\`trustLockfile\`](https://pnpm.io/settings#trustlockfile), so what they compare is the install rather than a safety check only one participant was asked for. It is on by default outside this benchmark, and pnpm's own resolution still applies its release-age policy on the rows that resolve.
   - **With an up-to-date lockfile there is nothing to resolve.** pnpm doesn't ask the server then, so those rows measure the same install in both pnpm 12 columns.
+  - **The update row starts from a warm cache.** The rows before it delete the cache twice, and how much of it a manager has rebuilt by the time update runs is an accident of row ordering — one manager's registry-free reuse of a warm \`node_modules\` left it cold on exactly the row where another's full re-download had just re-warmed itself. A developer who bumps versions has the cache their installs left, so before the update is timed, every manager re-fetches the base graph once, untimed.
   - Tarballs are still fetched by the client, in parallel and directly, on every row.
   `
 
