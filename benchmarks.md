@@ -1,8 +1,8 @@
 # Benchmarks of JavaScript Package Managers
 
-**Last benchmarked at**: _Aug 19, 2026, 10:00 AM_ (_daily_ updated).
+**Last benchmarked at**: _Aug 19, 2026, 2:45 PM_ (_daily_ updated).
 
-This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v0.1.0-alpha.7) across an emulated 50ms round trip at 200 Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
+This benchmark compares the performance of npm, pnpm, Yarn, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for PnP and any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v0.1.0-alpha.7) across an emulated 50ms round trip at 200 Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
 
 About the setup:
 
@@ -11,37 +11,38 @@ About the setup:
 - **Server-side resolution pays off when there is a graph to resolve.** Resolving one means walking it level by level, and each level costs a round trip, so the cost is roughly the depth of the graph times the latency. pnpr does that walk next to the registry — its own metadata access stays on loopback, the co-located shape the [pnpm monorepo's integrated benchmark](https://github.com/pnpm/pnpm) measures — and answers with the whole resolved lockfile at once, which is why the rows without a lockfile, and the row that changes dependencies, are the ones where it pulls ahead of plain pnpm.
 - **The lockfile is trusted, so every manager is asked for the same work.** pnpm verifies a lockfile against the registry before installing it — a supply-chain pass that costs a packument per package, and one no other manager here performs. The rows with a lockfile run every pnpm column with [`trustLockfile`](https://pnpm.io/settings#trustlockfile), so what they compare is the install rather than a safety check only one participant was asked for. It is on by default outside this benchmark, and pnpm's own resolution still applies its release-age policy on the rows that resolve.
 - **With an up-to-date lockfile there is nothing to resolve.** pnpm doesn't ask the server then, so those rows measure the same install in both pnpm 12 columns.
+- **The update row starts from a warm cache.** The rows before it delete the cache twice, and how much of it a manager has rebuilt by the time update runs is an accident of row ordering — one manager's registry-free reuse of a warm `node_modules` left it cold on exactly the row where another's full re-download had just re-warmed itself. A developer who bumps versions has the cache their installs left, so before the update is timed, every manager re-fetches the base graph once, untimed.
 - Tarballs are still fetched by the client, in parallel and directly, on every row.
 
 Each row's label lists which of `cache`, `trusted lockfile`, and `node_modules` are warm/present before install runs. Quick mapping to the real world (ordered from slowest to fastest scenario):
 
 - `clean`: a brand-new clone — nothing cached, no lockfile, no `node_modules`.
-- `cache`: a developer reinstalling without a lockfile.
 - `trusted lockfile`: a CI server doing its first install.
+- `cache`: a developer reinstalling without a lockfile.
 - `cache+trusted lockfile`: a developer reinstalling a known project.
 - `cache+node_modules`: the lockfile is deleted and install is run again.
 - `node_modules`: the cache and lockfile are deleted and install is run again.
 - `trusted lockfile+node_modules`: the cache is deleted and install is run again.
 - `cache+trusted lockfile+node_modules`: re-running install when nothing has changed.
-- `update`: dependency versions are bumped in `package.json` and install is run again.
+- `update`: dependency versions are bumped in `package.json` and install is run again, from a warm cache.
 
 ## Lots of Files
 
 The app's `package.json` [here](https://github.com/pnpm/benchmarks/blob/main/fixtures/alotta-files/package.json)
 
-| action  | cache | trusted lockfile | node_modules| npm | pnpm | [pnpm 🦀](https://github.com/pnpm/pacquet) | [pnpm + pnpr](https://pnpm.io/pnpr/install-acceleration) | Yarn | Yarn PnP | Bun |
-| ---     | ---   | ---      | ---         | --- | --- | --- | --- | --- | --- | --- |
-| install |   |   |   | 47.9s | 8.1s | 5.1s | 3.5s | 8.2s | 4.8s | 4.9s |
-| install | ✔ |   |   | 13.3s | 4.6s | 1.1s | 739ms | 5.6s | 3.6s | 764ms |
-| install |   | ✔ |   | 12.6s | 4.7s | 3.4s | 3.4s | 6.2s | 2.9s | 3s |
-| install | ✔ | ✔ |   | 8.5s | 2.5s | 647ms | 665ms | 2s | 148ms | 743ms |
-| install | ✔ |   | ✔ | 1.7s | 740ms | 61ms | 64ms | 3.8s | n/a | 1.9s |
-| install |   |   | ✔ | 1.7s | 743ms | 68ms | 74ms | 8.5s | n/a | 4.2s |
-| install |   | ✔ | ✔ | 1.3s | 767ms | 78ms | 82ms | 6.7s | n/a | 45ms |
-| install | ✔ | ✔ | ✔ | 1.3s | 592ms | 20ms | 19ms | 1.3s | n/a | 46ms |
-| update | n/a | n/a | n/a | 8.8s | 7.5s | 2.5s | 1.1s | 2.8s | 2.6s | 719ms |
+| action  | cache | trusted lockfile | node_modules| npm | pnpm | [pnpm 🦀](https://github.com/pnpm/pacquet) | [pnpm + pnpr](https://pnpm.io/pnpr/install-acceleration) | Yarn | Bun |
+| ---     | ---   | ---      | ---         | --- | --- | --- | --- | --- | --- |
+| install |   |   |   | 45.9s | 8.2s | 5s | 3.5s | 7.7s | 4.9s |
+| install |   | ✔ |   | 11.6s | 4.7s | 3.4s | 3.4s | 5.8s | 3s |
+| install | ✔ |   |   | 10.9s | 4s | 1.1s | 770ms | 4.8s | 749ms |
+| install | ✔ | ✔ |   | 7.2s | 2.1s | 652ms | 711ms | 1.8s | 748ms |
+| install | ✔ |   | ✔ | 1.4s | 601ms | 49ms | 53ms | 3.3s | 1.9s |
+| install |   |   | ✔ | 1.4s | 621ms | 69ms | 74ms | 7.9s | 4.2s |
+| install |   | ✔ | ✔ | 1s | 610ms | 61ms | 65ms | 6.2s | 45ms |
+| install | ✔ | ✔ | ✔ | 1s | 472ms | 16ms | 16ms | 1.1s | 44ms |
+| update | n/a | n/a | n/a | 3.8s | 3.5s | 968ms | 1.1s | 2.6s | 683ms |
 
-<img alt="Graph of the alotta-files results" src="/img/benchmarks/alotta-files.svg?v=8c29b540" />
+<img alt="Graph of the alotta-files results" src="/img/benchmarks/alotta-files.svg?v=da21a83e" />
 
 ### pnpm vs pnpm 🦀
 
@@ -49,17 +50,17 @@ pnpm v12 will use a new installation engine for fetching and linking written in 
 
 | action  | cache | trusted lockfile | node_modules| pnpm | [pnpm 🦀](https://github.com/pnpm/pacquet) |
 | ---     | ---   | ---      | ---         | --- | --- |
-| install |   |   |   | 8.1s | 5.1s |
+| install |   |   |   | 8.2s | 5s |
 | install |   | ✔ |   | 4.7s | 3.4s |
-| install | ✔ |   |   | 4.6s | 1.1s |
-| install | ✔ | ✔ |   | 2.5s | 647ms |
-| install |   | ✔ | ✔ | 767ms | 78ms |
-| install |   |   | ✔ | 743ms | 68ms |
-| install | ✔ |   | ✔ | 740ms | 61ms |
-| install | ✔ | ✔ | ✔ | 592ms | 20ms |
-| update | n/a | n/a | n/a | 7.5s | 2.5s |
+| install | ✔ |   |   | 4s | 1.1s |
+| install | ✔ | ✔ |   | 2.1s | 652ms |
+| install |   |   | ✔ | 621ms | 69ms |
+| install |   | ✔ | ✔ | 610ms | 61ms |
+| install | ✔ |   | ✔ | 601ms | 49ms |
+| install | ✔ | ✔ | ✔ | 472ms | 16ms |
+| update | n/a | n/a | n/a | 3.5s | 968ms |
 
-<img alt="Graph comparing pnpm versions on the alotta-files fixture" src="/img/benchmarks/alotta-files-pnpm.svg?v=79e66c29" />
+<img alt="Graph comparing pnpm versions on the alotta-files fixture" src="/img/benchmarks/alotta-files-pnpm.svg?v=c4eb97a4" />
 
 ## Node.js Version Management
 
@@ -67,11 +68,11 @@ pnpm installs and switches Node.js versions itself, so a separate version manage
 
 | scenario | pnpm 12 | fnm | nvm |
 | ---      | --- | --- | --- |
-| install Node.js 24 with nothing cached | 1.1s | 2.3s | 3.2s |
-| install Node.js 24 that was installed before | 159ms | 2.4s | 2.9s |
-| run `node` in a project pinned to Node.js 22 | 9ms | 4ms | 94ms |
+| install Node.js 24 with nothing cached | 1.1s | 2.3s | 2.7s |
+| install Node.js 24 that was installed before | 143ms | 2.4s | 2.3s |
+| run `node` in a project pinned to Node.js 22 | 8ms | 4ms | 83ms |
 
-<img alt="Graph comparing Node.js version managers on installing Node.js" src="/img/benchmarks/node-versions.svg?v=57cc640a" />
+<img alt="Graph comparing Node.js version managers on installing Node.js" src="/img/benchmarks/node-versions.svg?v=7ee51778" />
 
 A few things to keep in mind when reading these numbers:
 
