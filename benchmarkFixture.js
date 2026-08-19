@@ -203,9 +203,10 @@ export function pnpmWorkspaceYaml (opts = {}) {
 }
 
 /**
- * Undoes an install. Yarn PnP writes no `node_modules` at all, so removing only
- * that would leave its whole installation in place and hand the scenario that
- * follows a project that is already installed.
+ * Undoes an install. Yarn Berry can write installation state outside
+ * `node_modules` (the PnP artifacts, its own metadata), so removing only
+ * `node_modules` would hand the scenario that follows a project that is
+ * partly installed already.
  */
 function removeInstallOutput (cwd, modules) {
   if (modules) {
@@ -268,9 +269,6 @@ export default async function benchmark (pm, fixture, opts) {
         yarnRc += 'nodeLinker: pnpm\n'
                 + 'nmMode: hardlinks-local\n'
                 + 'compressionLevel: 0\n'
-        break
-      case 'yarn_pnp':
-        yarnRc += 'nodeLinker: pnp\n'
         break
     }
     await fs.writeFile(path.join(cwd, '.yarnrc.yml'), yarnRc)
@@ -390,7 +388,12 @@ export default async function benchmark (pm, fixture, opts) {
   // lockfile and no `node_modules` go with it, or the fast managers would
   // short-circuit and warm nothing, which is how the imbalance arose in the
   // first place.
-  const rewarmDir = path.join(cwd, '.rewarm')
+  // A sibling of the project, not a directory inside it: Yarn walks up from
+  // wherever it runs and refuses to install in a directory nested under a
+  // project that doesn't declare it ("doesn't seem to be part of the project
+  // declared in ..."), so the throwaway copy has to live where no project
+  // sits above it.
+  const rewarmDir = path.join(path.dirname(cwd), `${path.basename(cwd)}.rewarm`)
   rimraf.sync(rewarmDir)
   await fs.mkdir(rewarmDir, { recursive: true })
   try {
@@ -406,6 +409,10 @@ export default async function benchmark (pm, fixture, opts) {
         if (err?.code !== 'ENOENT') throw err
       }
     }
+    // For Yarn this drops an empty lockfile in place, the same project-root
+    // marker every scenario below relies on (see `cleanLockfile`); for the
+    // others it is a no-op on a directory that has no lockfile to remove.
+    cleanLockfile(pm, rewarmDir, env)
     // The cache dir may not exist right now: it was deleted two rows up, and
     // a manager whose `node_modules` row is a registry-free no-op (pnpm
     // restores the tree from the lockfile copy inside it) never recreated
