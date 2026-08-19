@@ -7,7 +7,7 @@ import prettyMs from 'pretty-ms'
 import tempy from 'tempy'
 import cmdsMap from './commandsMap.js'
 import nodeManagersMap from './nodeManagersMap.js'
-import benchmark, { readRecordedResults } from './recordBenchmark.js'
+import benchmark, { LIMIT_RUNS, readRecordedResults } from './recordBenchmark.js'
 import nodeVersionsSection from './nodeVersionsSection.js'
 import benchmarkNodeVersions, { cloneNvm, readManagerVersion } from './benchmarkNodeVersions.js'
 import { startBenchmarkRegistry, ROUND_TRIP_MS, BANDWIDTH_MBPS, RESULTS_SUFFIX } from './benchmarkRegistry.js'
@@ -31,7 +31,6 @@ const BENCH_MD = path.join(DIRNAME, 'benchmarks.md')
 const VERSIONS_FILE = path.join(DIRNAME, 'versions.json')
 
 const { stripIndents } = commonTags
-const LIMIT_RUNS = 30
 const NODE_VERSIONS_SVG = 'node-versions'
 
 const fixtures = [

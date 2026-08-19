@@ -91,11 +91,14 @@ jobs:
       # Fails when no sample arrived at all, which is the right outcome: with
       # nothing measured this week, the alternative is republishing last week's
       # numbers under today's date.
+      # Downloaded outside the working tree. The publish step below commits
+      # whatever it finds there, and an artifact unpacked next to the results
+      # is 3000 files it will happily commit alongside them.
       - uses: actions/download-artifact@v4
         with:
           pattern: samples-*
-          path: samples
-      - run: pnpm run merge-results samples
+          path: ${{ runner.temp }}/samples
+      - run: pnpm run merge-results "$RUNNER_TEMP/samples"
       - run: pnpm run report
       - name: Commit & Push changes
         # Pinned: this step is handed a token that can write to the repo, so

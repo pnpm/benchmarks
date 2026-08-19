@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { loadYamlFile } from 'load-yaml-file'
 import writeYamlFile from 'write-yaml-file'
+import { LIMIT_RUNS } from './recordBenchmark.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 const RESULTS = path.join(DIRNAME, 'results')
@@ -87,7 +88,11 @@ async function main () {
     // show up as a thousand-file diff on top of the samples actually added.
     if (merged.length === before) continue
     added += merged.length - before
-    await writeYamlFile(path.join(RESULTS, file), merged)
+    // A measuring run stops adding at `LIMIT_RUNS`, but three of them start
+    // from the same baseline and so can carry it past the cap together — 29
+    // samples plus one from each run is 32. The oldest go, because the cap is
+    // there to bound how far back a file reaches.
+    await writeYamlFile(path.join(RESULTS, file), merged.slice(-LIMIT_RUNS))
   }
 
   // The versions every run measured. They agree unless a package manager
@@ -105,8 +110,8 @@ async function main () {
     if (fs.readFileSync(other, 'utf8') !== chosen) {
       console.warn(
         `[merge-results] ${other} measured different versions than ${manifests[0]} — a release ` +
-        'landed mid-run. The page will report the latter, and the samples recorded under the ' +
-        'other version stay on disk for whenever it is next measured.'
+        `landed mid-run. The page will report the versions in ${manifests[0]}; the samples ` +
+        'recorded under the other stay on disk for whenever it is next measured.'
       )
     }
   }
