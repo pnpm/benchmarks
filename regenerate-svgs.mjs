@@ -62,7 +62,6 @@ const pmConfigs = [
   { key: 'pnpm11' },
   { key: 'pnpm12' },
   { key: 'yarn' },
-  { key: 'yarn_pnp', hasNodeModules: false },
   { key: 'bun' },
 ]
 
@@ -142,7 +141,6 @@ const mainBars = [
     secondaryKey: 'pnpm11',
   },
   { ...cmdsMap.yarn, key: 'yarn' },
-  { ...cmdsMap.yarn_pnp, key: 'yarn_pnp' },
   { ...cmdsMap.bun, key: 'bun' },
 ]
   .filter(bar => bar.stacked

@@ -74,15 +74,6 @@ export default {
       'install'
     ]
   },
-  yarn_pnp: {
-    scenario: 'yarn_pnp',
-    legend: 'Yarn PnP',
-    color: '#40a9ff',
-    name: 'yarn',
-    args: [
-      'install'
-    ]
-  },
   bun: {
     scenario: 'bun',
     legend: 'Bun',

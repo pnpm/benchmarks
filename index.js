@@ -68,7 +68,6 @@ const pmConfigs = [
   // between the two.
   { key: 'pnpm_pnpr' },
   { key: 'yarn' },
-  { key: 'yarn_pnp', hasNodeModules: false },
   { key: 'bun' },
 ]
 const pms = pmConfigs.map(({ key }) => key)
@@ -305,7 +304,6 @@ async function measure () {
       authToken: registry.authToken,
     },
     yarn: { managersDir: managersDirs.yarn },
-    yarn_pnp: { managersDir: managersDirs.yarn },
     bun: { managersDir: managersDirs.bun },
   }
   // A column with nowhere to install from would otherwise fail eight minutes
@@ -375,7 +373,7 @@ async function writePage ({ formattedNow, registryVersion, sections, svgs, sorte
 
   **Last benchmarked at**: _${formattedNow}_ (_daily_ updated).
 
-  This benchmark compares the performance of npm, pnpm, Yarn, Yarn PnP, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v${registryVersion}) across an emulated ${ROUND_TRIP_MS}ms round trip at ${BANDWIDTH_MBPS} Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
+  This benchmark compares the performance of npm, pnpm, Yarn, and Bun (check [Yarn's benchmarks](https://yarnpkg.com/benchmarks) for PnP and any other Yarn modes that are not included here). Every package manager installs through the same [pnpr](https://pnpm.io/pnpr) registry (v${registryVersion}) across an emulated ${ROUND_TRIP_MS}ms round trip at ${BANDWIDTH_MBPS} Mbit/s, so they all face one registry over one reproducible network instead of whatever link the benchmark machine happens to have. pnpm 12 is measured twice: once on its own, and once resolving its dependency graph [on the server](https://pnpm.io/pnpr/install-acceleration) instead of walking it itself. The page also compares how fast pnpm, fnm, and nvm install and switch Node.js versions.
 
   About the setup:
 
@@ -456,7 +454,6 @@ async function benchmarkFixtures ({ pmCommands, formattedNow, nodeVersion, runFi
         secondaryKey: 'pnpm11',
       },
       { ...pmCommands.yarn, key: 'yarn' },
-      { ...pmCommands.yarn_pnp, key: 'yarn_pnp' },
       { ...pmCommands.bun, key: 'bun' },
     ]
     const resArray = sortedTests.map(test => mainBars.map(bar => bar.stacked

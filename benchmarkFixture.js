@@ -203,9 +203,10 @@ export function pnpmWorkspaceYaml (opts = {}) {
 }
 
 /**
- * Undoes an install. Yarn PnP writes no `node_modules` at all, so removing only
- * that would leave its whole installation in place and hand the scenario that
- * follows a project that is already installed.
+ * Undoes an install. Yarn Berry can write installation state outside
+ * `node_modules` (the PnP artifacts, its own metadata), so removing only
+ * `node_modules` would hand the scenario that follows a project that is
+ * partly installed already.
  */
 function removeInstallOutput (cwd, modules) {
   if (modules) {
@@ -268,9 +269,6 @@ export default async function benchmark (pm, fixture, opts) {
         yarnRc += 'nodeLinker: pnpm\n'
                 + 'nmMode: hardlinks-local\n'
                 + 'compressionLevel: 0\n'
-        break
-      case 'yarn_pnp':
-        yarnRc += 'nodeLinker: pnp\n'
         break
     }
     await fs.writeFile(path.join(cwd, '.yarnrc.yml'), yarnRc)
