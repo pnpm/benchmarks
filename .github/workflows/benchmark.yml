@@ -38,9 +38,18 @@ jobs:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
           fetch-depth: 0
       # The harness's own pnpm and the Node.js it runs on, both at the
-      # versions package.json pins (`packageManager` and
+      # versions package.json pins (`devEngines.packageManager` and
       # `devEngines.runtime`). The step also runs `pnpm install` for the
       # harness.
+      #
+      # The pnpm pin is an exact version, not a range, because this step
+      # installs whatever the pin resolves to and then refuses to continue
+      # unless `pnpm --version` reports that same version back — and it asks
+      # inside this checkout, where pnpm hands off to the version
+      # `pnpm-lock.yaml` pins under `packageManagerDependencies`. A range
+      # resolves to each new release the day it lands while the lockfile still
+      # pins the last one, and the two disagreeing is what fails this step. An
+      # exact pin moves only when the lockfile moves with it.
       - uses: pnpm/setup@v2
       # fnm is compared against pnpm in the Node.js version management section.
       - name: Install fnm
