@@ -1,0 +1,130 @@
+{
+  "measuredAt": "2026-08-28T14:16:34.186Z",
+  "node": "v24.19.0",
+  "pnpr": "0.1.0-alpha.7",
+  "network": {
+    "roundTripMs": 50,
+    "bandwidthMbps": 200
+  },
+  "fixtures": [
+    {
+      "name": "alotta-files",
+      "packageManagers": {
+        "npm": {
+          "version": "12.0.2",
+          "results": {
+            "firstInstall": 45939,
+            "withWarmModules": 1451,
+            "withLockfile": 11547,
+            "withWarmCacheAndModules": 1469,
+            "withWarmCache": 10927,
+            "withWarmCacheAndLockfile": 7214,
+            "withWarmModulesAndLockfile": 1036,
+            "repeatInstall": 1051,
+            "updatedDependencies": 3861
+          }
+        },
+        "pnpm11": {
+          "version": "11.22.0",
+          "results": {
+            "firstInstall": 8208,
+            "withWarmModules": 580,
+            "withLockfile": 4735,
+            "withWarmCacheAndModules": 598,
+            "withWarmCache": 4011,
+            "withWarmCacheAndLockfile": 2162,
+            "withWarmModulesAndLockfile": 610,
+            "repeatInstall": 472,
+            "updatedDependencies": 3510
+          }
+        },
+        "pnpm12": {
+          "version": "12.0.0-rc.8",
+          "results": {
+            "firstInstall": 5009,
+            "withWarmModules": 67,
+            "withLockfile": 3258,
+            "withWarmCacheAndModules": 48,
+            "withWarmCache": 964,
+            "withWarmCacheAndLockfile": 635,
+            "withWarmModulesAndLockfile": 63,
+            "repeatInstall": 15,
+            "updatedDependencies": 949
+          }
+        },
+        "pnpm_pnpr": {
+          "version": "12.0.0-rc.8",
+          "results": {
+            "firstInstall": 3336,
+            "withWarmModules": 71,
+            "withLockfile": 3225,
+            "withWarmCacheAndModules": 53,
+            "withWarmCache": 741,
+            "withWarmCacheAndLockfile": 682,
+            "withWarmModulesAndLockfile": 67,
+            "repeatInstall": 17,
+            "updatedDependencies": 1063
+          }
+        },
+        "yarn": {
+          "version": "6.0.0-rc.19",
+          "results": {
+            "firstInstall": 7724,
+            "withWarmModules": 7965,
+            "withLockfile": 5878,
+            "withWarmCacheAndModules": 3275,
+            "withWarmCache": 4812,
+            "withWarmCacheAndLockfile": 1869,
+            "withWarmModulesAndLockfile": 6185,
+            "repeatInstall": 1144,
+            "updatedDependencies": 2633
+          }
+        },
+        "bun": {
+          "version": "1.4.0",
+          "results": {
+            "firstInstall": 4977,
+            "withWarmModules": 4255,
+            "withLockfile": 3001,
+            "withWarmCacheAndModules": 1887,
+            "withWarmCache": 749,
+            "withWarmCacheAndLockfile": 725,
+            "withWarmModulesAndLockfile": 44,
+            "repeatInstall": 46,
+            "updatedDependencies": 721
+          }
+        }
+      }
+    }
+  ],
+  "nodeVersions": {
+    "primary": "24",
+    "secondary": "22",
+    "managers": {
+      "pnpm12": {
+        "version": "12.0.0-rc.8",
+        "results": {
+          "cleanInstall": 1045.37,
+          "warmStoreInstall": 146.18,
+          "runInProject": 8.68
+        }
+      },
+      "fnm": {
+        "version": "1.39.0",
+        "results": {
+          "cleanInstall": 2395.34,
+          "warmStoreInstall": 2478.31,
+          "runInProject": 3.97
+        }
+      },
+      "nvm": {
+        "version": "0.40.7",
+        "results": {
+          "cleanInstall": 2745.12,
+          "warmStoreInstall": 2305.76,
+          "runInProject": 81.54
+        }
+      }
+    }
+  }
+}

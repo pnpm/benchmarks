@@ -12,21 +12,15 @@
         "benchmark": "node ./index.js",
         "report": "node ./index.js --report-only",
         "merge-results": "node ./mergeResults.js",
-        "regenerate-svgs": "node ./regenerate-svgs.mjs",
         "test": "node --test latencyProxy.test.mjs"
     },
     "dependencies": {
-        "common-tags": "^1.8.2",
         "cross-spawn": "^7.0.3",
         "get-folder-size": "^3.1.0",
-        "load-json-file": "^7.0.1",
         "load-yaml-file": "^1.0.0",
         "path-key": "^4.0.0",
-        "pretty-bytes": "^6.0.0",
-        "pretty-ms": "^7.0.1",
         "rimraf": "^4.0.0",
         "tempy": "^2.0.0",
-        "thenify": "^3.3.1",
         "touch": "^3.1.0",
         "write-yaml-file": "^4.2.0"
     },
