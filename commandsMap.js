@@ -1,8 +1,14 @@
+// The package managers the benchmark installs with, and the command each is
+// measured running. Nothing here says what a column is called or what colour
+// it is drawn in: this repository publishes numbers, and how they are
+// presented belongs to whoever presents them.
+//
+// Nor does anything here say which of them a reader is shown. Every manager
+// listed is measured and reported in `benchmarks.json`; pnpm.io draws npm and
+// the pnpm columns from it, and the rest are measured for our own comparisons.
 export default {
   npm: {
     scenario: 'npm',
-    legend: 'npm',
-    color: '#cd3731',
     name: 'npm',
     args: [
       'install',
@@ -18,8 +24,6 @@ export default {
   },
   pnpm11: {
     scenario: 'pnpm11',
-    legend: 'pnpm',
-    color: '#fbae00',
     name: 'pnpm',
     args: [
       'install',
@@ -34,11 +38,6 @@ export default {
   },
   pnpm12: {
     scenario: 'pnpm12',
-    legend: 'pnpm 🦀',
-    mdLegend: '[pnpm 🦀](https://github.com/pnpm/pacquet)',
-    color: '#fbae00',
-    displayVersion: '12',
-    mascot: '🦀',
     // The Rust engine keeps its store at $PNPM_HOME/store; scenarios that
     // carry this flag get PNPM_HOME pointed inside the fixture's cache/ dir
     // so the store is cleaned between scenarios like every other cache.
@@ -49,15 +48,11 @@ export default {
       '--ignore-scripts',
     ]
   },
-  // The command is pnpm 12's, unchanged: what makes this column different from
-  // the pnpm 🦀 one is the `pnprServer` the fixture is configured with, which
-  // moves dependency resolution onto the registry.
+  // The command is pnpm 12's, unchanged: what makes this scenario different
+  // from the one above is the `pnprServer` the fixture is configured with,
+  // which moves dependency resolution onto the registry.
   pnpm_pnpr: {
     scenario: 'pnpm_pnpr',
-    legend: 'pnpm + pnpr',
-    mdLegend: '[pnpm + pnpr](https://pnpm.io/pnpr/install-acceleration)',
-    color: '#2fa84f',
-    displayVersion: '12',
     rustEngine: true,
     name: 'pnpm',
     args: [
@@ -67,8 +62,6 @@ export default {
   },
   yarn: {
     scenario: 'yarn',
-    legend: 'Yarn',
-    color: '#248ebd',
     name: 'yarn',
     args: [
       'install'
@@ -76,8 +69,6 @@ export default {
   },
   bun: {
     scenario: 'bun',
-    legend: 'Bun',
-    color: '#e0709a',
     name: 'bun',
     args: [
       'install',

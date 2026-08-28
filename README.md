@@ -1,6 +1,8 @@
 # Benchmarks of JavaScript Package Managers
 
-The current numbers are in [benchmarks.md](./benchmarks.md).
+The current numbers are in [benchmarks.json](./benchmarks.json), and are published as a page at [pnpm.io/benchmarks](https://pnpm.io/benchmarks).
+
+This repository measures; it does not present. It writes one file — `benchmarks.json` — carrying the numbers, the version of every tool they were measured with, and the conditions they were measured under. Which of them a reader is shown, what the columns and rows are called, how the charts look and what the prose around them says are all decided in [pnpm/pnpm.io](https://github.com/pnpm/pnpm.io), which reads that file and renders the page from it (`scripts/update-benchmarks.mjs` there). Wording and presentation change far more often than the measurement does, and keeping them apart means neither drags the other through a benchmark run.
 
 ## Usage
 
@@ -9,11 +11,13 @@ pnpm install
 pnpm run benchmark
 ```
 
-A run measures every package manager, appends the timings to `results/<manager>/<version>/<fixture>.yaml`, and rewrites what it publishes from them: `benchmarks.md` and the charts it refers to, in `img/benchmarks/`. The charts sit at the path the markdown points at (`/img/benchmarks/...`), so a site serving these files can take both across unchanged.
+A run measures every package manager, appends the timings to `results/<manager>/<version>/<fixture>.yaml`, and rewrites `benchmarks.json` from them. The published number for a tool at a version is the minimum of the samples recorded for it — the statistic lives here rather than downstream, because only the code that took the samples knows what they are samples of.
 
-`pnpm run regenerate-svgs` redraws the charts from the recorded YAML without measuring anything.
+`pnpm run report` rewrites `benchmarks.json` from results already recorded, without provisioning a package manager or starting a registry. It measures nothing, so it cannot invent a number a measuring run failed to record; it fails instead.
 
 The benchmark installs every measured package manager itself, with pnpm 12: it bootstraps a `pnpm@next-12` and uses `pnpm add --global` / `pnpm self-update` to provision npm, pnpm, Yarn, and Bun — each into an isolated directory of its own (`setupPackageManagers.js`). That covers Yarn 6, which is not on the registry anymore — it ships as a platform binary that pnpm fetches from Yarn's GitHub releases. GitHub rate-limits anonymous API calls, so on CI a `GITHUB_TOKEN` should be exported for the release-list request.
+
+Every manager listed in `commandsMap.js` is measured and reported. Which of them a reader is shown is a separate question, answered downstream: pnpm.io draws npm and the pnpm columns, and the rest are measured for comparisons of our own.
 
 ## The registry the install benchmark runs against
 

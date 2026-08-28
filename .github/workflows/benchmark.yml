@@ -77,10 +77,10 @@ jobs:
             versions.json
           retention-days: 3
 
-  # Draws the page from the samples the jobs above recorded. It measures
-  # nothing itself — no package manager is installed here and no registry is
-  # started — so it can't quietly substitute a number for one a measuring run
-  # failed to record, and it costs seconds rather than minutes.
+  # Writes `benchmarks.json` from the samples the jobs above recorded. It
+  # measures nothing itself — no package manager is installed here and no
+  # registry is started — so it can't quietly substitute a number for one a
+  # measuring run failed to record, and it costs seconds rather than minutes.
   report:
     needs: benchmark
     # `needs` alone would skip this job if any one sample failed, throwing away
