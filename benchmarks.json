@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-08-29T16:04:27.943Z",
+  "measuredAt": "2026-08-30T08:36:54.797Z",
   "node": "v24.19.0",
   "pnpr": "0.1.0-alpha.9",
   "network": {
@@ -41,12 +41,12 @@
         "pnpm12": {
           "version": "12.1.0",
           "results": {
-            "firstInstall": 5091,
-            "withWarmModules": 65,
+            "firstInstall": 5045,
+            "withWarmModules": 63,
             "withLockfile": 3251,
             "withWarmCacheAndModules": 57,
-            "withWarmCache": 981,
-            "withWarmCacheAndLockfile": 609,
+            "withWarmCache": 932,
+            "withWarmCacheAndLockfile": 596,
             "withWarmModulesAndLockfile": 63,
             "repeatInstall": 15,
             "updatedDependencies": 952
@@ -55,15 +55,15 @@
         "pnpm_pnpr": {
           "version": "12.1.0",
           "results": {
-            "firstInstall": 3478,
-            "withWarmModules": 70,
+            "firstInstall": 3358,
+            "withWarmModules": 69,
             "withLockfile": 3318,
             "withWarmCacheAndModules": 51,
-            "withWarmCache": 721,
+            "withWarmCache": 692,
             "withWarmCacheAndLockfile": 678,
             "withWarmModulesAndLockfile": 67,
             "repeatInstall": 17,
-            "updatedDependencies": 1064
+            "updatedDependencies": 1040
           }
         },
         "yarn": {
@@ -104,8 +104,8 @@
       "pnpm12": {
         "version": "12.1.0",
         "results": {
-          "cleanInstall": 1045.7,
-          "warmStoreInstall": 165.59,
+          "cleanInstall": 990.75,
+          "warmStoreInstall": 144.71,
           "runInProject": 7.27
         }
       },
