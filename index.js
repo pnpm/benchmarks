@@ -34,6 +34,13 @@ const VERSIONS_FILE = path.join(DIRNAME, 'versions.json')
 const fixtures = [
   /* 'react-app', 'ember-quickstart', 'angular-quickstart', 'medium-size-app' */
   'alotta-files',
+  // A dependency graph big enough for the graph-shaped costs to show. On
+  // `alotta-files` they cancel out: what a package manager saves by not
+  // materializing a package it already has is about what it spends walking
+  // 1.3k packages to decide that, so two linking strategies that differ a
+  // lot at scale land on the same number there. This fixture is ~3k
+  // packages and ~71k files, which is where they separate.
+  'alotta-packages',
 ]
 
 // The package managers measured on every fixture. A key is the name the
@@ -45,6 +52,10 @@ const pmConfigs = [
   { key: 'npm' },
   { key: 'pnpm11' },
   { key: 'pnpm12' },
+  // The same pnpm 12 again, linking differently: a virtual store shared
+  // between projects, and a flat `node_modules` with no virtual store at all.
+  { key: 'pnpm12_global_virtual_store' },
+  { key: 'pnpm12_hoisted' },
   // The same pnpm 12 as the row above, resolving the dependency graph on the
   // registry instead of walking it itself, so pnpr is the only difference
   // between the two.
@@ -220,6 +231,8 @@ async function measure () {
     npm: { managersDir: managersDirs.npm },
     pnpm11: { managersDir: managersDirs.pnpm11 },
     pnpm12: { managersDir: managersDirs.pnpm12 },
+    pnpm12_global_virtual_store: { managersDir: managersDirs.pnpm12 },
+    pnpm12_hoisted: { managersDir: managersDirs.pnpm12 },
     pnpm_pnpr: {
       managersDir: managersDirs.pnpm12,
       pnprServer: registry.resolverUrl,
