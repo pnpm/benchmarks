@@ -161,7 +161,10 @@ async function writeRegistryConfig (pm, cwd, opts) {
   await fs.writeFile(path.join(cwd, '.npmrc'), npmrc)
 
   if (pm.name === 'pnpm') {
-    await fs.writeFile(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml(opts))
+    await fs.writeFile(
+      path.join(cwd, 'pnpm-workspace.yaml'),
+      pnpmWorkspaceYaml({ ...opts, settings: pm.workspaceSettings })
+    )
   }
 }
 
@@ -177,6 +180,12 @@ async function writeRegistryConfig (pm, cwd, opts) {
  * without a lockfile measure; the client sends the setting along with its
  * resolve request, so the server applies the same cutoff and both pnpm
  * columns still install the same graph.
+ *
+ * `settings` carries whatever else the scenario is measured under —
+ * `virtualStoreType`, `nodeLinker` — because a scenario that differs from
+ * another only in how it links has to differ in the config file, not in the
+ * command: this is the spelling pnpm 12's Rust engine reads reliably, where
+ * its `.npmrc`/`--config` handling differs.
  *
  * `trustLockfile` turns off the other half of that policy: the supply-chain
  * pass that re-checks every entry of a lockfile it is about to install. That
@@ -198,6 +207,9 @@ export function pnpmWorkspaceYaml (opts = {}) {
   let yaml = "packages:\n  - '.'\ntrustLockfile: true\n"
   if (opts.pnprServer) {
     yaml += `pnprServer: ${opts.pnprServer}\n`
+  }
+  for (const [key, value] of Object.entries(opts.settings ?? {})) {
+    yaml += `${key}: ${value}\n`
   }
   return yaml
 }

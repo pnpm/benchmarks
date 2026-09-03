@@ -48,6 +48,41 @@ export default {
       '--ignore-scripts',
     ]
   },
+  // The two scenarios below are the same pnpm 12 as the row above, measured
+  // under a different linking strategy. Neither changes the command: the
+  // setting travels in the fixture's `pnpm-workspace.yaml`, which is the
+  // spelling the Rust engine reads reliably.
+  //
+  // `virtualStoreType: global` moves the virtual store out of the project and
+  // under the store directory, where slots are keyed by dependency graph and
+  // shared between projects instead of rebuilt per project.
+  pnpm12_global_virtual_store: {
+    scenario: 'pnpm12_global_virtual_store',
+    rustEngine: true,
+    name: 'pnpm',
+    args: [
+      'install',
+      '--ignore-scripts',
+    ],
+    workspaceSettings: {
+      virtualStoreType: 'global',
+    },
+  },
+  // `nodeLinker: hoisted` writes a flat `node_modules` and no virtual store at
+  // all — the tree npm and Yarn Classic produce — so this row is what pnpm 12
+  // costs when it links the way the other managers do.
+  pnpm12_hoisted: {
+    scenario: 'pnpm12_hoisted',
+    rustEngine: true,
+    name: 'pnpm',
+    args: [
+      'install',
+      '--ignore-scripts',
+    ],
+    workspaceSettings: {
+      nodeLinker: 'hoisted',
+    },
+  },
   // The command is pnpm 12's, unchanged: what makes this scenario different
   // from the one above is the `pnprServer` the fixture is configured with,
   // which moves dependency resolution onto the registry.
