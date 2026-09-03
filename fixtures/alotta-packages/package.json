@@ -14,7 +14,7 @@
     "react-scripts": "5.0.1",
     "serverless": "3.38.0",
     "storybook": "8.1.11",
-    "vite": "5.3.1",
+    "vite": "6.4.3",
     "webpack": "5.92.1"
   }
 }
