@@ -13,6 +13,7 @@ import benchmarkNodeVersions, {
 } from './benchmarkNodeVersions.js'
 import { startBenchmarkRegistry, ROUND_TRIP_MS, BANDWIDTH_MBPS, RESULTS_SUFFIX } from './benchmarkRegistry.js'
 import { bootstrapInstaller, provisionPackageManagers } from './setupPackageManagers.js'
+import { fixtures } from './fixtures.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -31,17 +32,6 @@ const MANIFEST = path.join(DIRNAME, 'benchmarks.json')
 // next to the code and never committed.
 const VERSIONS_FILE = path.join(DIRNAME, 'versions.json')
 
-const fixtures = [
-  /* 'react-app', 'ember-quickstart', 'angular-quickstart', 'medium-size-app' */
-  'alotta-files',
-  // A dependency graph big enough for the graph-shaped costs to show. On
-  // `alotta-files` they cancel out: what a package manager saves by not
-  // materializing a package it already has is about what it spends walking
-  // 1.3k packages to decide that, so two linking strategies that differ a
-  // lot at scale land on the same number there. This fixture is ~3k
-  // packages and ~71k files, which is where they separate.
-  'alotta-packages',
-]
 
 // The package managers measured on every fixture. A key is the name the
 // results are filed under and the name the manifest reports them by; what the

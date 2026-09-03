@@ -55,18 +55,29 @@ export function bootstrapInstaller (setupDir) {
  */
 export function provisionPackageManagers (installerPnpm, managersDirs) {
   provision(installerPnpm, managersDirs.npm, ['add', '--global', 'npm@latest'])
-  // pnpm refuses `pnpm add --global pnpm`: switching pnpm is `self-update`'s
-  // job, so that is what installs both pnpm lines. The v11 column pins the
-  // line's own dist-tag rather than `latest`, which would follow the
-  // registry's default tag onto pnpm 12 the moment that becomes the stable
-  // line — and this column exists to measure the previous major.
-  provision(installerPnpm, managersDirs.pnpm11, ['self-update', 'latest-11'])
+  provisionPnpm11(installerPnpm, managersDirs.pnpm11)
   provision(installerPnpm, managersDirs.pnpm12, ['self-update', 'next-12'])
   // `yarn@6` rather than `yarn@latest`: a specifier that doesn't commit to a
   // major resolves to Yarn Berry from npm, while the benchmark measures the
   // current Yarn line — the Rust rewrite released on GitHub.
   provision(installerPnpm, managersDirs.yarn, ['add', '--global', 'yarn@6'])
   provision(installerPnpm, managersDirs.bun, ['add', '--global', 'bun@latest'])
+}
+
+/**
+ * The pnpm the registry's populate pass installs with. Exported because
+ * `populatePnprCache.js` provisions this one alone: nothing it does is
+ * timed, so the managers the benchmark measures would be installed for
+ * no one.
+ *
+ * pnpm refuses `pnpm add --global pnpm`: switching pnpm is `self-update`'s
+ * job, so that is what installs both pnpm lines. The v11 column pins the
+ * line's own dist-tag rather than `latest`, which would follow the
+ * registry's default tag onto pnpm 12 the moment that becomes the stable
+ * line — and this column exists to measure the previous major.
+ */
+export function provisionPnpm11 (installerPnpm, managersDir) {
+  provision(installerPnpm, managersDir, ['self-update', 'latest-11'])
 }
 
 function provision (installerPnpm, managersDir, args) {
