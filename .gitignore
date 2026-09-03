@@ -10,3 +10,7 @@ versions.json
 
 samples
 .claude
+
+.pnpr-cache
+
+.tmp-populate
