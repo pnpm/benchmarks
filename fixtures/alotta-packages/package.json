@@ -4,6 +4,7 @@
   "dependencies": {
     "@angular/cli": "17.3.8",
     "@nestjs/cli": "10.3.2",
+    "@teambit/bit": "2.2.34",
     "@vue/cli-service": "5.0.8",
     "eslint": "8.57.0",
     "gatsby": "5.13.7",
