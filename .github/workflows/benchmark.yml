@@ -34,9 +34,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: pnpm/setup@v2
+      # No `GITHUB_TOKEN` here, unlike the measuring jobs: the only thing
+      # that needs one is provisioning Yarn, whose binary comes from a
+      # GitHub release, and this job provisions pnpm alone.
       - run: pnpm run populate-cache
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/cache/save@v4
         with:
           path: .pnpr-cache
