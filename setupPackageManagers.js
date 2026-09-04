@@ -56,7 +56,7 @@ export function bootstrapInstaller (setupDir) {
 export function provisionPackageManagers (installerPnpm, managersDirs) {
   provision(installerPnpm, managersDirs.npm, ['add', '--global', 'npm@latest'])
   provisionPnpm11(installerPnpm, managersDirs.pnpm11)
-  provision(installerPnpm, managersDirs.pnpm12, ['self-update', 'next-12'])
+  provisionPnpm12(installerPnpm, managersDirs.pnpm12)
   // `yarn@6` rather than `yarn@latest`: a specifier that doesn't commit to a
   // major resolves to Yarn Berry from npm, while the benchmark measures the
   // current Yarn line — the Rust rewrite released on GitHub.
@@ -78,6 +78,21 @@ export function provisionPackageManagers (installerPnpm, managersDirs) {
  */
 export function provisionPnpm11 (installerPnpm, managersDir) {
   provision(installerPnpm, managersDir, ['self-update', 'latest-11'])
+}
+
+/**
+ * The pnpm the registry's populate pass installs with. Exported for
+ * `populatePnprCache.js`, which provisions this one alone: nothing it
+ * does is timed, so the managers the benchmark measures would be
+ * installed for no one.
+ *
+ * pnpm 12 rather than pnpm 11 because the populate pass resolves the
+ * whole graph, and the two resolvers are not in the same league on a
+ * large one: the `alotta-packages` graph takes pnpm 12 six seconds and
+ * pnpm 11 twenty-one minutes.
+ */
+export function provisionPnpm12 (installerPnpm, managersDir) {
+  provision(installerPnpm, managersDir, ['self-update', 'next-12'])
 }
 
 function provision (installerPnpm, managersDir, args) {

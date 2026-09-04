@@ -147,8 +147,8 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     } else {
       for (const fixtureName of fixtureNames) {
         populateCache({
-          pm: withRegistry(cmdsMap.pnpm11, url),
-          managersDir: managersDirs.pnpm11,
+          pm: withRegistry(cmdsMap.pnpm12, url),
+          managersDir: managersDirs.pnpm12,
           dir,
           registry: url,
           fixtureDir: path.join(DIRNAME, 'fixtures', fixtureName),

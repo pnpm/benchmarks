@@ -264,10 +264,20 @@ export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
   // nothing to do with the fixture.
   fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml())
 
+  // The populate client's own store and cache live under the throwaway
+  // project, not wherever the machine keeps them: pnpm 12 puts its store
+  // at `$PNPM_HOME/store`, so an inherited `PNPM_HOME` would fill the
+  // developer's — or the runner's — real store with this graph, and a
+  // second populate would then be measuring a machine that had already
+  // seen it.
+  const env = Object.create(createEnv(managersDir))
+  env.PNPM_HOME = path.join(cwd, 'home')
+  env.PNPM_CONFIG_CACHE_DIR = path.join(cwd, 'home', 'cache')
+
   const install = (label) => {
     const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
       cwd,
-      env: createEnv(managersDir),
+      env,
       stdio: 'inherit',
     })
     if (result.error) throw result.error

@@ -4,8 +4,8 @@ import path from 'path'
 import tempy from 'tempy'
 import { fileURLToPath } from 'url'
 import cmdsMap from './commandsMap.js'
-import { fixtures } from './fixtures.js'
-import { bootstrapInstaller, provisionPnpm11 } from './setupPackageManagers.js'
+import { fixtureNames } from './fixtures.js'
+import { bootstrapInstaller, provisionPnpm12 } from './setupPackageManagers.js'
 import { installPnpr, populateCache, reservePort, startPnpr } from './pnprServer.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -34,7 +34,7 @@ async function run () {
   const out = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_OUT
   const tmpDir = tempy.directory()
   const managersDirs = {
-    pnpm11: path.join(tmpDir, 'pnpm11'),
+    pnpm: path.join(tmpDir, 'pnpm'),
     pnpr: path.join(tmpDir, 'pnpr'),
   }
   for (const dir of Object.values(managersDirs)) {
@@ -46,17 +46,17 @@ async function run () {
   // benchmark measures: nothing here is timed, so the other managers would
   // be provisioned for no one.
   const installerPnpm = bootstrapInstaller(path.join(tmpDir, 'setup'))
-  provisionPnpm11(installerPnpm, managersDirs.pnpm11)
+  provisionPnpm12(installerPnpm, managersDirs.pnpm)
   installPnpr(managersDirs.pnpr)
 
   const dir = path.join(managersDirs.pnpr, 'server')
   const port = await reservePort()
   const server = await startPnpr({ managersDir: managersDirs.pnpr, dir, port })
   try {
-    for (const fixtureName of fixtures) {
+    for (const fixtureName of fixtureNames) {
       populateCache({
-        pm: withRegistry(cmdsMap.pnpm11, server.url),
-        managersDir: managersDirs.pnpm11,
+        pm: withRegistry(cmdsMap.pnpm12, server.url),
+        managersDir: managersDirs.pnpm,
         dir,
         registry: server.url,
         fixtureDir: path.join(DIRNAME, 'fixtures', fixtureName),
