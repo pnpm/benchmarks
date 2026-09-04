@@ -2,7 +2,9 @@ npm-debug.log
 
 node_modules
 
-.tmp
+# every scratch directory a run makes: `.tmp`, and the `TMPDIR` a local
+# verification or populate is pointed at (`.tmp-populate`, `.tmp-verify`, ...)
+.tmp*
 
 managers
 
@@ -12,5 +14,3 @@ samples
 .claude
 
 .pnpr-cache
-
-.tmp-populate
