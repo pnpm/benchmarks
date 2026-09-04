@@ -1,0 +1,27 @@
+# Fixtures are inputs to a measurement, not dependencies of this project.
+#
+# Their versions are pinned exactly and on purpose: the lockfile is deleted
+# on every run, so what a fixture resolves to is what the numbers describe.
+# Bumping one changes the graph being measured — a different package count,
+# a different file count, different work — which makes the samples recorded
+# for it before the bump samples of something else, while `min()` keeps
+# pooling them with the new ones.
+#
+# So Dependabot is told to leave them alone. `ignore` covers security
+# updates too, which is the case that reaches a repository with no
+# configuration at all: nothing here is deployed or executed, so a
+# vulnerable version in a fixture is a description of a real dependency
+# graph, not an exposure.
+#
+# Updating a fixture deliberately means bumping the pin and deleting the
+# results recorded under the old graph.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - "/fixtures/*"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    ignore:
+      - dependency-name: "*"
