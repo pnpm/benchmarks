@@ -13,6 +13,7 @@ import benchmarkNodeVersions, {
 } from './benchmarkNodeVersions.js'
 import { startBenchmarkRegistry, ROUND_TRIP_MS, BANDWIDTH_MBPS, RESULTS_SUFFIX } from './benchmarkRegistry.js'
 import { bootstrapInstaller, provisionPackageManagers } from './setupPackageManagers.js'
+import { fixtures, fixtureNames } from './fixtures.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -31,17 +32,6 @@ const MANIFEST = path.join(DIRNAME, 'benchmarks.json')
 // next to the code and never committed.
 const VERSIONS_FILE = path.join(DIRNAME, 'versions.json')
 
-const fixtures = [
-  /* 'react-app', 'ember-quickstart', 'angular-quickstart', 'medium-size-app' */
-  'alotta-files',
-  // A dependency graph big enough for the graph-shaped costs to show. On
-  // `alotta-files` they cancel out: what a package manager saves by not
-  // materializing a package it already has is about what it spends walking
-  // 1.3k packages to decide that, so two linking strategies that differ a
-  // lot at scale land on the same number there. This fixture is ~3k
-  // packages and ~71k files, which is where they separate.
-  'alotta-packages',
-]
 
 // The package managers measured on every fixture. A key is the name the
 // results are filed under and the name the manifest reports them by; what the
@@ -136,6 +126,17 @@ async function report () {
       throw new Error(`The versions recorded at ${versionsFile} carry no version for ${key}.`)
     }
   }
+  // Every fixture's skip list has to name a manager that exists, or a
+  // renamed scenario key would silently start measuring a fixture it was
+  // meant to be kept off — and the run would be found out by the wall
+  // clock rather than by anything here.
+  for (const { name, skipManagers = [] } of fixtures) {
+    for (const key of skipManagers) {
+      if (!pmConfigs.some((config) => config.key === key)) {
+        throw new Error(`Fixture ${name} skips ${key}, which is not a measured package manager.`)
+      }
+    }
+  }
   // The same check for the Node.js section, over the tools the manifest is
   // written from, so what is demanded here is exactly what a measuring run
   // records.
@@ -217,7 +218,7 @@ async function measure () {
   // round trips, and that is the very thing the pnpm + pnpr column measures.
   const registry = await startBenchmarkRegistry({
     managersDirs,
-    fixtureNames: fixtures,
+    fixtureNames,
   })
   // The command every manager is measured with, pointed at that registry.
   const pmCommands = Object.fromEntries(
@@ -304,9 +305,12 @@ async function measure () {
  */
 async function collectFixtures ({ pmCommands, runFixture }) {
   const measured = []
-  for (const name of fixtures) {
+  for (const { name, skipManagers = [] } of fixtures) {
     const packageManagers = {}
     for (const config of pmConfigs) {
+      // A fixture a manager is not measured with reports nothing for it,
+      // rather than a zero a reader would take for a fast install.
+      if (skipManagers.includes(config.key)) continue
       packageManagers[config.key] = {
         version: pmCommands[config.key].version,
         results: min(await runFixture(config, name), tests),

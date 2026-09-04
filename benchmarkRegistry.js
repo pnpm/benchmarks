@@ -35,14 +35,31 @@ export const BANDWIDTH_MBPS = 200
 export const RESULTS_SUFFIX = '-pnpr'
 
 /**
+ * A pnpr storage directory `populatePnprCache.js` filled, named by
+ * `BENCHMARK_PNPR_CACHE`. Absent — or pointing at nothing — means this run
+ * warms the registry itself.
+ */
+function seededStorageDir () {
+  const seed = process.env.BENCHMARK_PNPR_CACHE
+  if (!seed) return null
+  const storage = fs.existsSync(path.join(seed, 'storage')) ? path.join(seed, 'storage') : seed
+  if (!fs.existsSync(storage)) {
+    console.log(`# BENCHMARK_PNPR_CACHE names ${seed}, which does not exist; warming the registry instead`)
+    return null
+  }
+  return storage
+}
+
+/**
  * Brings up the registry every package manager is benchmarked against: a pnpr
- * proxying npmjs, reached across an emulated network link.
+ * proxying npmjs and bit, reached across an emulated network link.
  *
  * Everything that has to happen before the first measured install happens here
- * — the registry's cache is warmed, and server-side resolution is proven to
- * work — so that no scenario pays for the setup of the ones after it.
+ * — the registry's cache is warmed or seeded, and server-side resolution is
+ * proven to work — so that no scenario pays for the setup of the ones after it.
  */
 export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
+  const seededStorage = seededStorageDir()
   installPnpr(managersDirs.pnpr)
   const version = pnprVersion(managersDirs.pnpr)
 
@@ -67,6 +84,13 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     // really use, so the tarball URLs it serves point across the emulated link
     // instead of around it.
     fs.mkdirSync(dir, { recursive: true })
+    // Whatever a populate run left behind, put in place before the server
+    // starts — pnpr reads its storage at startup. An empty or missing
+    // directory simply means the warm-up below runs as it always did, so a
+    // cache that failed to arrive costs time rather than correctness.
+    if (seededStorage) {
+      fs.cpSync(seededStorage, path.join(dir, 'storage'), { recursive: true })
+    }
     // A port the system says is free, rather than a fixed one: a fixed port is
     // still held by the pnpr of an earlier run in the same job, and that older
     // server answers for it.
@@ -111,18 +135,30 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     // Warm pnpr's cache before anything is timed. Otherwise whichever manager
     // ran first would pay to pull every package from npmjs into pnpr, and the
     // rest would be measured against a registry it had warmed for them.
-    for (const fixtureName of fixtureNames) {
-      populateCache({
-        pm: withRegistry(cmdsMap.pnpm11, url),
-        managersDir: managersDirs.pnpm11,
-        dir,
-        registry: url,
-        fixtureDir: path.join(DIRNAME, 'fixtures', fixtureName),
-      })
-      // Warming the cache is the first thing to put real load on the link, and
-      // a link that dies here would otherwise be discovered much later, after a
-      // package manager had spent minutes retrying against a closed port.
-      assertAlive()
+    //
+    // A run handed a storage directory that `populatePnprCache.js` filled
+    // skips the pull: it was copied into place before the server started, so
+    // there is nothing left to fetch. Parallel sample jobs share one such directory, which is what
+    // makes them samples of the same thing — three jobs each warming their
+    // own registry resolve the graph three times, and anything published in
+    // between lands in one sample and not the others.
+    if (seededStorage) {
+      console.log(`# pnpr storage seeded from ${seededStorage} (cache warm-up skipped)`)
+    } else {
+      for (const fixtureName of fixtureNames) {
+        populateCache({
+          pm: withRegistry(cmdsMap.pnpm12, url),
+          managersDir: managersDirs.pnpm12,
+          dir,
+          registry: url,
+          fixtureDir: path.join(DIRNAME, 'fixtures', fixtureName),
+        })
+        // Warming the cache is the first thing to put real load on the link,
+        // and a link that dies here would otherwise be discovered much later,
+        // after a package manager had spent minutes retrying against a closed
+        // port.
+        assertAlive()
+      }
     }
 
     // Verified with the same client the accelerated scenario measures —

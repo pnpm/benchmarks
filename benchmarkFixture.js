@@ -23,6 +23,20 @@ const lockfileNameByPM = {
 export function createEnv (managersDir) {
   const pathEnv = pathKey()
   const env = Object.create(process.env)
+  // Every install the benchmark spawns runs under this environment, and
+  // none of them has any use for the CI token — the one thing that needs
+  // it is provisioning Yarn, which builds its own environment in
+  // `setupPackageManagers.js`. Blanked rather than deleted because the
+  // object inherits from `process.env` through the prototype chain, which
+  // `delete` cannot reach; an own property shadows it for the `for..in`
+  // walk Node does when it builds a child's environment.
+  //
+  // Installs already run with `--ignore-scripts` (`enableScripts: false`
+  // for Yarn), so nothing in a fixture's graph should execute at all.
+  // This is the second lock: the fixtures are thousands of packages of
+  // real, sometimes long-abandoned code, and a token that never enters
+  // the room cannot be read out of it.
+  env.GITHUB_TOKEN = ''
   env[pathEnv] = [
     // Where pnpm 12 links the executables of the package managers it
     // provisions: the directory is the manager's own pnpm home, and `bin` is

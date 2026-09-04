@@ -33,6 +33,17 @@ const PASSWORD = 'benchmark'
  * manager against it so they all face the same registry, and additionally lets
  * pnpm offload dependency resolution to it.
  */
+/** Where bit publishes; reached through pnpr's `bit` route. */
+export const BIT_REGISTRY = 'https://node-registry.bit.cloud/'
+
+/**
+ * The scopes bit publishes under. Declared as the `bit` registry's
+ * namespace, which is what routes them there — `@bitdev` included: the
+ * fixture's graph reaches it through `@teambit/bit`, and it is not on
+ * npmjs.
+ */
+export const BIT_SCOPES = ['@teambit', '@bitdev']
+
 export function installPnpr (managersDir) {
   // Like pnpm 12 and Bun, the binary arrives through an install script.
   const result = spawn.sync('pnpm', ['add', '@pnpm/pnpr@next', '--allow-build=@pnpm/pnpr'], {
@@ -73,11 +84,34 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     // The benchmark registers its own resolver user on startup.
     '    max_users: 1',
     'registries:',
+    // The public npm registry. No `packages:` map, so it claims every
+    // name — the catch-all, and therefore last in the router's sources.
     '  npmjs:',
     '    type: upstream',
     '    url: https://registry.npmjs.org/',
     '    public: true',
-    'defaultRegistry: npmjs',
+    // Bit publishes to a registry of its own, and `alotta-packages`
+    // depends on it. Declaring the scopes it serves is all the routing
+    // that is needed: every manager keeps installing from the one
+    // registry URL the benchmark hands it, and the names below are the
+    // only ones fetched from bit. Tarball URLs come back rewritten to
+    // pnpr's own address, so bit's packages cross the emulated link
+    // like every other package.
+    '  bit:',
+    '    type: upstream',
+    `    url: ${BIT_REGISTRY}`,
+    '    public: true',
+    '    packages:',
+    ...BIT_SCOPES.map((scope) => `      '${scope}/*':`),
+    // One URL in front of both: a router resolves a name to the first
+    // source whose declared packages claim it. `defaultRegistry` has to
+    // name *this* rather than a concrete registry — a concrete one
+    // resolves only its own namespace and answers `Unclaimed` for
+    // everything else, with no fall-through to a sibling.
+    '  main:',
+    '    type: router',
+    '    sources: [bit, npmjs]',
+    'defaultRegistry: main',
     'resolver:',
     '  enabled: true',
     // The accelerated scenario asks the server to resolve against this
@@ -230,10 +264,20 @@ export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
   // nothing to do with the fixture.
   fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml())
 
+  // The populate client's own store and cache live under the throwaway
+  // project, not wherever the machine keeps them: pnpm 12 puts its store
+  // at `$PNPM_HOME/store`, so an inherited `PNPM_HOME` would fill the
+  // developer's — or the runner's — real store with this graph, and a
+  // second populate would then be measuring a machine that had already
+  // seen it.
+  const env = Object.create(createEnv(managersDir))
+  env.PNPM_HOME = path.join(cwd, 'home')
+  env.PNPM_CONFIG_CACHE_DIR = path.join(cwd, 'home', 'cache')
+
   const install = (label) => {
     const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
       cwd,
-      env: createEnv(managersDir),
+      env,
       stdio: 'inherit',
     })
     if (result.error) throw result.error

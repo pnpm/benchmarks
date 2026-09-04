@@ -12,6 +12,37 @@ permissions:
   contents: read
 
 jobs:
+  # Fills pnpr's storage with everything the fixtures need, once, for the
+  # three sample jobs to share.
+  #
+  # The warm-up is the slowest part of a run — some 5.4k packages and ~3 GB
+  # for the current fixtures — and it is identical work in every job. Three
+  # jobs doing it separately is three times the load on npmjs and bit for one
+  # answer, and worse, it is three *different* answers whenever a package
+  # publishes while the run is in flight: each job resolves its own view of
+  # the graph and the three stop being samples of the same thing.
+  #
+  # Shared through the run's own cache key rather than an artifact: the entry
+  # is written once and read three times within this run and never reused by
+  # the next one, which is deliberate. A cache that survived the week would
+  # freeze every packument in it, and the benchmark exists to measure the
+  # latest of everything.
+  populate-registry-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/setup@v2
+      # No `GITHUB_TOKEN` here, unlike the measuring jobs: the only thing
+      # that needs one is provisioning Yarn, whose binary comes from a
+      # GitHub release, and this job provisions pnpm alone.
+      - run: pnpm run populate-cache
+      - uses: actions/cache/save@v4
+        with:
+          path: .pnpr-cache
+          key: pnpr-storage-${{ github.run_id }}
+
   # The samples this run contributes, measured in parallel rather than one
   # after another. Three measurements of the same thing are what the published
   # number is a `min()` of, and they are independent of each other: each makes
@@ -25,6 +56,7 @@ jobs:
   # while a long-lived one keeps its min-of-many, which reads as a regression
   # in whatever was released most recently.
   benchmark:
+    needs: populate-registry-cache
     strategy:
       # One machine having a bad day shouldn't throw away the samples the
       # others already measured. The reporting job publishes whatever arrived.
@@ -63,9 +95,18 @@ jobs:
       # The token authenticates pnpm's Yarn 6 release-list request against
       # GitHub's API, whose anonymous rate limit is shared across every job on
       # the runner's IP.
+      # A miss here is not a failure: `BENCHMARK_PNPR_CACHE` naming a
+      # directory that isn't there makes the run warm the registry itself,
+      # the way it did before this was split out. It costs the job time, not
+      # its numbers.
+      - uses: actions/cache/restore@v4
+        with:
+          path: .pnpr-cache
+          key: pnpr-storage-${{ github.run_id }}
       - run: pnpm run benchmark
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BENCHMARK_PNPR_CACHE: ${{ github.workspace }}/.pnpr-cache
       # Only uploaded when the measurement finished. A run that died partway
       # recorded some scenarios and not others, and those are exactly the
       # numbers not to publish.
