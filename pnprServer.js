@@ -361,7 +361,7 @@ const ZSTD_IN_FLIGHT = 16
  * runner, so this is generous.
  */
 const ZSTD_STALL_MS = 300_000
-/** How many passes over the tars still missing an encoding, for copies dropped anyway. */
+/** How many passes over the tars still missing an encoding, for copies pnpr dropped anyway (its 1 GiB quota of copies, say). */
 const ZSTD_ROUNDS = 3
 
 /**
@@ -402,26 +402,18 @@ async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
   let missing = [...packages.values()].filter((pkg) => !encoded(pkg))
   console.log(`# making level-19 zstd encodings for ${missing.length} of ${packages.size} tars`)
   const started = Date.now()
-  rounds: for (let round = 0; round < ZSTD_ROUNDS && missing.length > 0; round++) {
+  // Tars over 256 MiB are never encoded at level 19, so they are asked for
+  // on every pass and are what the last one leaves missing.
+  for (let round = 0; round < ZSTD_ROUNDS && missing.length > 0; round++) {
     let room = 0
     for (const pkg of missing) {
-      if (room === 0) {
-        const queued = await waitForWorker(variantsDir, ZSTD_IN_FLIGHT - 1)
-        if (queued === null) break rounds
-        room = ZSTD_IN_FLIGHT - queued
-      }
+      if (room === 0) room = ZSTD_IN_FLIGHT - await waitForWorker(variantsDir, ZSTD_IN_FLIGHT - 1)
       await drain(`${tarRegistry}${pkg.name}@${pkg.version}`)
       room--
     }
-    if (await waitForWorker(variantsDir, 0) === null) break
-    const still = missing.filter((pkg) => !encoded(pkg))
-    // Tars over 256 MiB are never encoded at level 19, and nothing else is
-    // left once a pass makes no encoding at all.
-    const progressed = still.length < missing.length
-    missing = still
-    if (!progressed) break
+    await waitForWorker(variantsDir, 0)
+    missing = missing.filter((pkg) => !encoded(pkg))
   }
-  missing = missing.filter((pkg) => !encoded(pkg))
   const anyEncoded = fs.existsSync(variantsDir) &&
     fs.readdirSync(variantsDir, { recursive: true }).some((file) => file.endsWith('.tar.zst'))
   if (missing.length > 0 && !anyEncoded) {
@@ -434,15 +426,15 @@ async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
 
 /**
  * Waits until at most `max` copies wait for pnpr's worker, and returns how
- * many do. `null` when the worker finished none of them for `ZSTD_STALL_MS`.
+ * many do. Throws when the worker finishes none of them for `ZSTD_STALL_MS`:
+ * carrying on would leave it compressing through the measured rows.
  */
 async function waitForWorker (variantsDir, max) {
   let queued = countCopies(variantsDir)
   let lastProgress = Date.now()
   while (queued > max) {
     if (Date.now() - lastProgress > ZSTD_STALL_MS) {
-      console.log(`# pnpr's zstd worker finished nothing in ${ZSTD_STALL_MS / 1000}s with ${queued} copies queued; giving up on the rest`)
-      return null
+      throw new Error(`pnpr's zstd worker finished nothing in ${ZSTD_STALL_MS / 1000}s with ${queued} copies queued under ${variantsDir}`)
     }
     await new Promise((resolve) => setTimeout(resolve, 250))
     const now = countCopies(variantsDir)
