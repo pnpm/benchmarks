@@ -353,10 +353,16 @@ function collectLockedPackages (lockfilePath, packages) {
   }
 }
 
-/** How many tars are asked for at once: below pnpr's queue of 32, which drops what it has no room for. */
-const ZSTD_BATCH = 16
-/** How long a batch may go without a new encoding appearing before the rest of it is given up on. */
-const ZSTD_STALL_MS = 60_000
+/** How many copies may wait for pnpr's worker before another tar is asked for: below its queue of 32, which drops what it has no room for. */
+const ZSTD_IN_FLIGHT = 16
+/**
+ * How long the worker may go without finishing a copy before it is taken to
+ * be stuck. One tar near the 256 MiB limit takes minutes at level 19 on a CI
+ * runner, so this is generous.
+ */
+const ZSTD_STALL_MS = 300_000
+/** How many passes over the tars still missing an encoding, for copies dropped anyway. */
+const ZSTD_ROUNDS = 3
 
 /**
  * Has pnpr make the level-19 zstd encoding of every tar the fixtures install.
@@ -368,14 +374,21 @@ const ZSTD_STALL_MS = 60_000
  * reaches the level-19 state for everything it is asked for often; a
  * benchmark that installs five thousand packages in one burst never would,
  * and would be measuring a registry compressing on the fly with no encoding
- * on disk, which is the state no real registry stays in.
+ * on disk, which is the state no real registry stays in. Worse, the copies
+ * queued during the measured installs would keep the worker compressing
+ * through the rows after them, on the cores the timed install is using.
  *
- * So the tars are asked for here, untimed, a batch at a time so the worker's
- * queue always has room, until each one has its encoding. It reads where
- * pnpr keeps them (the `~tar-zstd19` namespace of its cache, in the
- * storage's layout), which is pnpr's business rather than a contract: if the
- * layout ever moves, this says so and carries on — the benchmark is then
- * merely measuring level 3, not wrong.
+ * So the tars are asked for here, untimed, each only once the worker's queue
+ * has room for it. Every copy waiting for the worker, or being encoded, is a
+ * `<hash>.copy.tmp.*` file beside where its encoding will go, removed when
+ * the worker is done with it or drops it, so counting those files is counting
+ * the queue. The install that ran just before leaves it full, with large tars
+ * among the copies, so the first wait can be long.
+ *
+ * This reads where pnpr keeps the encodings (the `~tar-zstd19` namespace of
+ * its cache, in the storage's layout), which is pnpr's business rather than a
+ * contract: if the layout ever moves, this says so and carries on — the
+ * benchmark is then merely measuring level 3, not wrong.
  */
 async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
   const variantsDir = path.join(storageDir, '.pnpr-cache', '~tar-zstd19', 'packages')
@@ -385,30 +398,63 @@ async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
     'blobs',
     `${crypto.createHash('sha256').update(integrity).digest('hex')}.tar.zst`
   )
-  let missing = [...packages.values()].filter((pkg) => !fs.existsSync(variantPath(pkg)))
+  const encoded = (pkg) => fs.existsSync(variantPath(pkg))
+  let missing = [...packages.values()].filter((pkg) => !encoded(pkg))
   console.log(`# making level-19 zstd encodings for ${missing.length} of ${packages.size} tars`)
   const started = Date.now()
-  let given = 0
-  for (let i = 0; i < missing.length; i += ZSTD_BATCH) {
-    const batch = missing.slice(i, i + ZSTD_BATCH)
-    await Promise.all(batch.map((pkg) => drain(`${tarRegistry}${pkg.name}@${pkg.version}`)))
-    let pending = batch.filter((pkg) => !fs.existsSync(variantPath(pkg)))
-    let lastProgress = Date.now()
-    while (pending.length > 0 && Date.now() - lastProgress < ZSTD_STALL_MS) {
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      const still = pending.filter((pkg) => !fs.existsSync(variantPath(pkg)))
-      if (still.length < pending.length) lastProgress = Date.now()
-      pending = still
+  rounds: for (let round = 0; round < ZSTD_ROUNDS && missing.length > 0; round++) {
+    let room = 0
+    for (const pkg of missing) {
+      if (room === 0) {
+        const queued = await waitForWorker(variantsDir, ZSTD_IN_FLIGHT - 1)
+        if (queued === null) break rounds
+        room = ZSTD_IN_FLIGHT - queued
+      }
+      await drain(`${tarRegistry}${pkg.name}@${pkg.version}`)
+      room--
     }
-    // Tars over 256 MiB are never encoded at level 19.
-    given += pending.length
-    if (i === 0 && pending.length === batch.length) {
-      console.log(`# no level-19 encoding appeared under ${variantsDir}; pnpr may keep them elsewhere now, so the tars stay at level 3`)
-      return
-    }
+    if (await waitForWorker(variantsDir, 0) === null) break
+    const still = missing.filter((pkg) => !encoded(pkg))
+    // Tars over 256 MiB are never encoded at level 19, and nothing else is
+    // left once a pass makes no encoding at all.
+    const progressed = still.length < missing.length
+    missing = still
+    if (!progressed) break
+  }
+  missing = missing.filter((pkg) => !encoded(pkg))
+  const anyEncoded = fs.existsSync(variantsDir) &&
+    fs.readdirSync(variantsDir, { recursive: true }).some((file) => file.endsWith('.tar.zst'))
+  if (missing.length > 0 && !anyEncoded) {
+    console.log(`# no level-19 encoding appeared under ${variantsDir}; pnpr may keep them elsewhere now, so the tars stay at level 3`)
+    return
   }
   console.log(`# level-19 zstd encodings made in ${Math.round((Date.now() - started) / 1000)}s` +
-    (given ? `; ${given} tars stay at level 3` : ''))
+    (missing.length ? `; ${missing.length} tars stay at level 3` : ''))
+}
+
+/**
+ * Waits until at most `max` copies wait for pnpr's worker, and returns how
+ * many do. `null` when the worker finished none of them for `ZSTD_STALL_MS`.
+ */
+async function waitForWorker (variantsDir, max) {
+  let queued = countCopies(variantsDir)
+  let lastProgress = Date.now()
+  while (queued > max) {
+    if (Date.now() - lastProgress > ZSTD_STALL_MS) {
+      console.log(`# pnpr's zstd worker finished nothing in ${ZSTD_STALL_MS / 1000}s with ${queued} copies queued; giving up on the rest`)
+      return null
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    const now = countCopies(variantsDir)
+    if (now < queued) lastProgress = Date.now()
+    queued = now
+  }
+  return queued
+}
+
+function countCopies (variantsDir) {
+  if (!fs.existsSync(variantsDir)) return 0
+  return fs.readdirSync(variantsDir, { recursive: true }).filter((file) => file.includes('.copy.tmp.')).length
 }
 
 /** pnpr's path segment for a name: `[a-z0-9._-]` as is, any other byte as `!` and two hex digits. */
