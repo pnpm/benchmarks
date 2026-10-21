@@ -1,8 +1,11 @@
 'use strict'
+import crypto from 'crypto'
 import fs from 'fs'
+import http from 'http'
 import net from 'net'
 import path from 'path'
 import spawn from 'cross-spawn'
+import { loadYamlFileSync } from 'load-yaml-file'
 import { createEnv, applyPnprServerRegistry, pnpmWorkspaceYaml, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
 
 /**
@@ -43,6 +46,29 @@ export const BIT_REGISTRY = 'https://node-registry.bit.cloud/'
  * npmjs.
  */
 export const BIT_SCOPES = ['@teambit', '@bitdev']
+
+/**
+ * The npm registry every package manager installs from, on a pnpr at `base`.
+ * pnpr serves each ecosystem under a prefix of its own, npm included, and
+ * the bare `/npm/` is the config's `defaultRegistry`.
+ */
+export function npmRegistryUrl (base) {
+  return `${base}/npm/`
+}
+
+/** The registry name of the tar registry below. */
+const TAR_REGISTRY = 'zstd'
+
+/**
+ * The tar registry on a pnpr at `base`: the same packages as
+ * `npmRegistryUrl`, each served as the uncompressed tar of its `.tgz` with
+ * whatever content coding the client accepts — zstd, for pnpm. Only the
+ * `pnpm + pnpr` scenario installs from it; it is a pnpm-and-pnpr feature, and
+ * every other column keeps the `.tgz` registry the rest of the world serves.
+ */
+export function tarRegistryUrl (base) {
+  return `${base}/npm/~${TAR_REGISTRY}/`
+}
 
 export function installPnpr (managersDir) {
   // Like pnpm 12 and Bun, the binary arrives through an install script.
@@ -111,18 +137,25 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     '  main:',
     '    type: router',
     '    sources: [bit, npmjs]',
+    // The same sources again, served as tars rather than `.tgz` files (see
+    // `tarRegistryUrl`). One storage behind both: a package pulled through
+    // either is cached once.
+    `  ${TAR_REGISTRY}:`,
+    '    type: router',
+    '    sources: [bit, npmjs]',
+    '    tarballs: tar',
     'defaultRegistry: main',
     'resolver:',
     '  enabled: true',
     // The accelerated scenario asks the server to resolve against this
-    // address — its own un-proxied one — so the resolver's metadata fetches
+    // address — its own un-proxied tar registry — so the resolver's metadata fetches
     // stay on loopback instead of crossing the emulated link and coming back
     // in through the front door (see `applyPnprServerRegistry`). The server
     // resolves against whatever registry the client sends but only if that
     // registry is declared, so the address has to be listed as a route here.
     'routes:',
     '  public:',
-    `    - registry: http://127.0.0.1:${port}`,
+    `    - registry: ${tarRegistryUrl(`http://127.0.0.1:${port}`)}`,
     'log:',
     '  type: stdout',
     '  format: pretty',
@@ -241,57 +274,168 @@ export async function mintToken (url) {
 }
 
 /**
- * Fills pnpr's cache by installing the fixture once, untimed and without the
+ * Fills pnpr's cache by installing the fixture, untimed and without the
  * emulated link in the way. Without this the first manager measured would pay
  * for pulling every package from npmjs into pnpr and the rest would not.
  *
- * It installs twice: once with the fixture as it is, and once with the
- * dependencies the `updatedDependencies` scenario adds. That scenario
- * installs a different graph than the fixture's, and a registry warmed only
- * for the fixture would make the first manager's measured update run the one
- * that pulls the whole updated graph out of npmjs.
+ * It installs twice from each registry: once with the fixture as it is, and
+ * once with the dependencies the `updatedDependencies` scenario adds. That
+ * scenario installs a different graph than the fixture's, and a registry
+ * warmed only for the fixture would make the first manager's measured update
+ * run the one that pulls the whole updated graph out of npmjs.
+ *
+ * The tar registry needs warming of its own, on top of the `.tgz` one, even
+ * though both serve from the same cache. pnpr learns the hash of a proxied
+ * package's tar only the first time it serves that tar, and until then the
+ * package's metadata carries no integrity — so a resolver meeting such a
+ * package downloads the tarball in the middle of resolving to hash it. Then
+ * the level-19 zstd encodings are made: see `warmZstdEncodings`.
  */
-export function populateCache ({ pm, managersDir, dir, registry, fixtureDir }) {
+export async function populateCache ({ pm, managersDir, dir, registry, tarRegistry, fixtureDir }) {
   const cwd = path.join(dir, 'populate')
-  fs.rmSync(cwd, { recursive: true, force: true })
-  fs.mkdirSync(cwd, { recursive: true })
-  fs.copyFileSync(path.join(fixtureDir, 'package.json'), path.join(cwd, 'package.json'))
-  fs.writeFileSync(path.join(cwd, '.npmrc'), `registry=${registry}\n`)
-  // The same workspace manifest the measured pnpm scenarios install under,
-  // so the populate pass resolves the same universe of versions they will.
-  // Declaring a workspace root also stops pnpm walking up into the manager
-  // directory above, whose own lockfile is for pnpr's dependencies and has
-  // nothing to do with the fixture.
-  fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml())
+  // The packages the `.tgz` installs resolved, with the `.tgz` integrity
+  // pnpr names their level-19 encodings by.
+  const packages = new Map()
+  for (const [label, reg, tarRegistries] of [
+    ['.tgz', registry, undefined],
+    ['tar', tarRegistry, [tarRegistry]],
+  ]) {
+    fs.rmSync(cwd, { recursive: true, force: true })
+    fs.mkdirSync(cwd, { recursive: true })
+    fs.copyFileSync(path.join(fixtureDir, 'package.json'), path.join(cwd, 'package.json'))
+    fs.writeFileSync(path.join(cwd, '.npmrc'), `registry=${reg}\n`)
+    // The same workspace manifest the measured pnpm scenarios install under,
+    // so the populate pass resolves the same universe of versions they will.
+    // Declaring a workspace root also stops pnpm walking up into the manager
+    // directory above, whose own lockfile is for pnpr's dependencies and has
+    // nothing to do with the fixture.
+    fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml({ tarRegistries }))
 
-  // The populate client's own store and cache live under the throwaway
-  // project, not wherever the machine keeps them: pnpm 12 puts its store
-  // at `$PNPM_HOME/store`, so an inherited `PNPM_HOME` would fill the
-  // developer's — or the runner's — real store with this graph, and a
-  // second populate would then be measuring a machine that had already
-  // seen it.
-  const env = Object.create(createEnv(managersDir))
-  env.PNPM_HOME = path.join(cwd, 'home')
-  env.PNPM_CONFIG_CACHE_DIR = path.join(cwd, 'home', 'cache')
+    // The populate client's own store and cache live under the throwaway
+    // project, not wherever the machine keeps them: pnpm 12 puts its store
+    // at `$PNPM_HOME/store`, so an inherited `PNPM_HOME` would fill the
+    // developer's — or the runner's — real store with this graph, and a
+    // second populate would then be measuring a machine that had already
+    // seen it.
+    const env = Object.create(createEnv(managersDir))
+    env.PNPM_HOME = path.join(cwd, 'home')
+    env.PNPM_CONFIG_CACHE_DIR = path.join(cwd, 'home', 'cache')
 
-  const install = (label) => {
-    const result = spawn.sync(pm.name, [...pm.args, '--no-frozen-lockfile'], {
-      cwd,
-      env,
-      stdio: 'inherit',
-    })
-    if (result.error) throw result.error
-    if (result.status !== 0) {
-      throw new Error(`Populating the pnpr cache (${label}) failed with status code ${result.status}`)
+    const install = (graph) => {
+      const args = [...pm.args.filter((arg) => !arg.startsWith('--registry=')), `--registry=${reg}`, '--no-frozen-lockfile']
+      const result = spawn.sync(pm.name, args, { cwd, env, stdio: 'inherit' })
+      if (result.error) throw result.error
+      if (result.status !== 0) {
+        throw new Error(`Populating the pnpr cache (${label} registry, ${graph}) failed with status code ${result.status}`)
+      }
+      if (label === '.tgz') collectLockedPackages(path.join(cwd, 'pnpm-lock.yaml'), packages)
+    }
+    install('fixture')
+
+    const packageJsonPath = path.join(cwd, 'package.json')
+    const manifest = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+    manifest.dependencies = { ...manifest.dependencies, ...UPDATED_DEPENDENCIES }
+    fs.writeFileSync(packageJsonPath, JSON.stringify(manifest))
+    install('updated dependencies')
+  }
+  await warmZstdEncodings({ storageDir: path.join(dir, 'storage'), tarRegistry, packages })
+}
+
+/** Adds every registry package a lockfile pins to `packages`, keyed by `name@version`. */
+function collectLockedPackages (lockfilePath, packages) {
+  const lockfile = loadYamlFileSync(lockfilePath)
+  for (const [key, entry] of Object.entries(lockfile?.packages ?? {})) {
+    const integrity = entry?.resolution?.integrity
+    // A tarball, git or directory dependency is not the registry's to encode.
+    if (!integrity || entry.resolution.tarball || entry.resolution.type) continue
+    const at = key.indexOf('@', 1)
+    packages.set(key, { name: key.slice(0, at), version: key.slice(at + 1), integrity })
+  }
+}
+
+/** How many tars are asked for at once: below pnpr's queue of 32, which drops what it has no room for. */
+const ZSTD_BATCH = 16
+/** How long a batch may go without a new encoding appearing before the rest of it is given up on. */
+const ZSTD_STALL_MS = 60_000
+
+/**
+ * Has pnpr make the level-19 zstd encoding of every tar the fixtures install.
+ *
+ * pnpr answers a zstd request for a tar with a level-19 encoding once it has
+ * stored one. Until then it compresses at level 3 while it streams, and hands
+ * a copy to a single background worker that makes the level-19 encoding — or
+ * drops the copy, when the worker's queue is full. A registry in service
+ * reaches the level-19 state for everything it is asked for often; a
+ * benchmark that installs five thousand packages in one burst never would,
+ * and would be measuring a registry compressing on the fly with no encoding
+ * on disk, which is the state no real registry stays in.
+ *
+ * So the tars are asked for here, untimed, a batch at a time so the worker's
+ * queue always has room, until each one has its encoding. It reads where
+ * pnpr keeps them (the `~tar-zstd19` namespace of its cache, in the
+ * storage's layout), which is pnpr's business rather than a contract: if the
+ * layout ever moves, this says so and carries on — the benchmark is then
+ * merely measuring level 3, not wrong.
+ */
+async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
+  const variantsDir = path.join(storageDir, '.pnpr-cache', '~tar-zstd19', 'packages')
+  const variantPath = ({ name, integrity }) => path.join(
+    variantsDir,
+    encodeSegment(name),
+    'blobs',
+    `${crypto.createHash('sha256').update(integrity).digest('hex')}.tar.zst`
+  )
+  let missing = [...packages.values()].filter((pkg) => !fs.existsSync(variantPath(pkg)))
+  console.log(`# making level-19 zstd encodings for ${missing.length} of ${packages.size} tars`)
+  const started = Date.now()
+  let given = 0
+  for (let i = 0; i < missing.length; i += ZSTD_BATCH) {
+    const batch = missing.slice(i, i + ZSTD_BATCH)
+    await Promise.all(batch.map((pkg) => drain(`${tarRegistry}${pkg.name}@${pkg.version}`)))
+    let pending = batch.filter((pkg) => !fs.existsSync(variantPath(pkg)))
+    let lastProgress = Date.now()
+    while (pending.length > 0 && Date.now() - lastProgress < ZSTD_STALL_MS) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const still = pending.filter((pkg) => !fs.existsSync(variantPath(pkg)))
+      if (still.length < pending.length) lastProgress = Date.now()
+      pending = still
+    }
+    // Tars over 256 MiB are never encoded at level 19.
+    given += pending.length
+    if (i === 0 && pending.length === batch.length) {
+      console.log(`# no level-19 encoding appeared under ${variantsDir}; pnpr may keep them elsewhere now, so the tars stay at level 3`)
+      return
     }
   }
-  install('fixture')
+  console.log(`# level-19 zstd encodings made in ${Math.round((Date.now() - started) / 1000)}s` +
+    (given ? `; ${given} tars stay at level 3` : ''))
+}
 
-  const packageJsonPath = path.join(cwd, 'package.json')
-  const manifest = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
-  manifest.dependencies = { ...manifest.dependencies, ...UPDATED_DEPENDENCIES }
-  fs.writeFileSync(packageJsonPath, JSON.stringify(manifest))
-  install('updated dependencies')
+/** pnpr's path segment for a name: `[a-z0-9._-]` as is, any other byte as `!` and two hex digits. */
+function encodeSegment (text) {
+  let encoded = ''
+  for (const byte of Buffer.from(text)) {
+    encoded += /[a-z0-9._-]/.test(String.fromCharCode(byte))
+      ? String.fromCharCode(byte)
+      : `!${byte.toString(16).padStart(2, '0')}`
+  }
+  return encoded
+}
+
+/** Fetches `url` as pnpm would, asking for zstd, and throws the body away. */
+function drain (url) {
+  return new Promise((resolve, reject) => {
+    http.get(url, { headers: { 'accept-encoding': 'zstd' } }, (res) => {
+      if (res.statusCode !== 200) {
+        res.resume()
+        reject(new Error(`pnpr answered ${res.statusCode} for ${url}`))
+        return
+      }
+      res.on('end', resolve)
+      res.on('error', reject)
+      res.resume()
+    }).on('error', reject)
+  })
 }
 
 /**
@@ -311,7 +455,12 @@ export function verifyResolverIsUsed ({ pm, managersDir, dir, registry, authToke
   const hosts = new Set([registry, pnprServer].map((url) => new URL(url).host))
   const auth = [...hosts].map((host) => `//${host}/:_authToken=${authToken}\n`).join('')
   fs.writeFileSync(path.join(cwd, '.npmrc'), `registry=${registry}\n${auth}`)
-  fs.writeFileSync(path.join(cwd, 'pnpm-workspace.yaml'), pnpmWorkspaceYaml({ pnprServer }))
+  // `registry` and `pnprServerRegistry` are the same tar registry, reached
+  // across the link and next to the server, and each has to be declared one.
+  fs.writeFileSync(
+    path.join(cwd, 'pnpm-workspace.yaml'),
+    pnpmWorkspaceYaml({ pnprServer, tarRegistries: [registry, pnprServerRegistry].filter(Boolean) })
+  )
 
   const resolveCalls = () => (serverLog().match(/uri=\/-\/pnpr\/v0\/resolve/g) ?? []).length
   const before = resolveCalls()

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url'
 import cmdsMap from './commandsMap.js'
 import { fixtureNames } from './fixtures.js'
 import { bootstrapInstaller, provisionPnpm12 } from './setupPackageManagers.js'
-import { installPnpr, populateCache, reservePort, startPnpr } from './pnprServer.js'
+import { installPnpr, npmRegistryUrl, populateCache, reservePort, startPnpr, tarRegistryUrl } from './pnprServer.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 /** Where the populated storage lands, unless a path is given. */
@@ -54,11 +54,12 @@ async function run () {
   const server = await startPnpr({ managersDir: managersDirs.pnpr, dir, port })
   try {
     for (const fixtureName of fixtureNames) {
-      populateCache({
-        pm: withRegistry(cmdsMap.pnpm12, server.url),
+      await populateCache({
+        pm: withRegistry(cmdsMap.pnpm12, npmRegistryUrl(server.url)),
         managersDir: managersDirs.pnpm,
         dir,
-        registry: server.url,
+        registry: npmRegistryUrl(server.url),
+        tarRegistry: tarRegistryUrl(server.url),
         fixtureDir: path.join(DIRNAME, 'fixtures', fixtureName),
       })
       server.assertAlive()

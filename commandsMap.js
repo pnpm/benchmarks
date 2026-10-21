@@ -85,7 +85,9 @@ export default {
   },
   // The command is pnpm 12's, unchanged: what makes this scenario different
   // from the one above is the `pnprServer` the fixture is configured with,
-  // which moves dependency resolution onto the registry.
+  // which moves dependency resolution onto the registry, and the registry it
+  // installs from — pnpr's tar registry, which serves packages as zstd-coded
+  // tars rather than the `.tgz` files every other scenario downloads.
   pnpm_pnpr: {
     scenario: 'pnpm_pnpr',
     rustEngine: true,
