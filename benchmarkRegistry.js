@@ -12,6 +12,8 @@ import {
   populateCache,
   verifyResolverIsUsed,
   reservePort,
+  npmRegistryUrl,
+  tarRegistryUrl,
 } from './pnprServer.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -102,7 +104,11 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
       logPath: path.join(dir, 'registry-link.log'),
     })
     proxies.push(registryLink)
-    const url = `http://127.0.0.1:${registryLink.port}`
+    const linkUrl = `http://127.0.0.1:${registryLink.port}`
+    // The registry every manager installs from, and the tar registry only
+    // the accelerated scenario does — the same packages, the same link.
+    const url = npmRegistryUrl(linkUrl)
+    const tarUrl = tarRegistryUrl(linkUrl)
 
     // Resolution requests cross a link of their own, at the same round trip.
     // Only latency is emulated here: the resolve exchange is small, so what it
@@ -119,7 +125,7 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
       managersDir: managersDirs.pnpr,
       dir,
       port: pnprPort,
-      publicUrl: url,
+      publicUrl: linkUrl,
       // Logging every request is what lets the check below see whether pnpm
       // really resolved on the server. It goes to a file, and every manager
       // faces the same server, so it costs all of them the same.
@@ -146,11 +152,12 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
       console.log(`# pnpr storage seeded from ${seededStorage} (cache warm-up skipped)`)
     } else {
       for (const fixtureName of fixtureNames) {
-        populateCache({
+        await populateCache({
           pm: withRegistry(cmdsMap.pnpm12, url),
           managersDir: managersDirs.pnpm12,
           dir,
           registry: url,
+          tarRegistry: tarUrl,
           fixtureDir: path.join(DIRNAME, 'fixtures', fixtureName),
         })
         // Warming the cache is the first thing to put real load on the link,
@@ -164,34 +171,37 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     // Verified with the same client the accelerated scenario measures —
     // pnpm 12 — so a release that stopped using the resolver is caught here,
     // not discovered as a suspiciously plain-looking column later.
+    const serverDirectTarUrl = tarRegistryUrl(server.url)
     verifyResolverIsUsed({
-      pm: withRegistry(cmdsMap.pnpm_pnpr, url),
+      pm: withRegistry(cmdsMap.pnpm_pnpr, tarUrl),
       managersDir: managersDirs.pnpm12,
       dir,
-      registry: url,
+      registry: tarUrl,
       authToken,
       pnprServer: resolverUrl,
-      pnprServerRegistry: server.url,
+      pnprServerRegistry: serverDirectTarUrl,
       fixtureDir: path.join(DIRNAME, 'fixtures', fixtureNames[0]),
       serverLog: server.log,
     })
 
     return {
       url,
+      tarUrl,
       resolverUrl,
-      // The server's own un-proxied address. The accelerated scenario hands
-      // this to the client as the registry to resolve against server-side,
+      // The tar registry at the server's own un-proxied address. The
+      // accelerated scenario hands this to the client as the registry to
+      // resolve against server-side,
       // so the resolver's metadata fetches stay next to the registry — the
       // production shape, and the one the pnpm monorepo's
       // `integrated-benchmark` measures — instead of crossing the emulated
       // link back into the server's public endpoint.
-      serverDirectUrl: server.url,
+      serverDirectTarUrl,
       authToken,
       version,
       assertAlive,
       stop,
-      /** Points a package manager's command at this registry. */
-      withRegistry: (pm) => withRegistry(pm, url),
+      /** Points a package manager's command at this registry, or at `registry` on it. */
+      withRegistry: (pm, registry = url) => withRegistry(pm, registry),
     }
   } catch (err) {
     stop()

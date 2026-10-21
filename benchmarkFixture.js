@@ -216,11 +216,30 @@ async function writeRegistryConfig (pm, cwd, opts) {
  * client spends a round trip per package, and with nothing to verify the two
  * pnpm 12 columns now really do measure the same install there — which is
  * what the page has always claimed of them.
+ *
+ * `tarRegistries` declares pnpr tar registries — the `pnpm + pnpr` scenario
+ * installs from one (see `tarRegistryUrl` in `pnprServer.js`).
  */
 export function pnpmWorkspaceYaml (opts = {}) {
   let yaml = "packages:\n  - '.'\ntrustLockfile: true\n"
   if (opts.pnprServer) {
     yaml += `pnprServer: ${opts.pnprServer}\n`
+  }
+  if (opts.tarRegistries?.length) {
+    yaml += 'registries:\n'
+    opts.tarRegistries.forEach((url, i) => {
+      yaml += `  ${url}:\n`
+      // The first is the one the project installs from, so the default
+      // scope routes to it; any other is the same registry under another
+      // address, declared so the resolver knows what it serves too.
+      if (i === 0) yaml += "    scopes: ['@']\n"
+      // A tar registry's metadata names no tarball URL: the client rebuilds
+      // it from pnpr's layout.
+      yaml += '    serverType: pnpr\n'
+      // pnpr's abbreviated metadata carries `time`, so the release-age
+      // check reads it rather than every package's full metadata.
+      yaml += '    supportsTimeField: true\n'
+    })
   }
   for (const [key, value] of Object.entries(opts.settings ?? {})) {
     yaml += `${key}: ${value}\n`

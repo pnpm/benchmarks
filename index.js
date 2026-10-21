@@ -220,14 +220,17 @@ async function measure () {
     managersDirs,
     fixtureNames,
   })
-  // The command every manager is measured with, pointed at that registry.
-  const pmCommands = Object.fromEntries(
-    Object.entries(cmdsMap).map(([key, pm]) => [key, registry.withRegistry(pm)])
-  )
   // Where each manager is installed, and — for the accelerated column — the
   // server it offloads resolution to. That server resolves against its own
   // un-proxied address: it models a resolver co-located with the registry, not
   // one reaching its own metadata across the client's link.
+  //
+  // The accelerated column also installs from pnpr's tar registry rather than
+  // the `.tgz` one every other column uses: the same packages, served as tars
+  // compressed with zstd. That is how pnpm installs from pnpr when both sides
+  // are new enough, and it is not something any other client can ask for.
+  // The tar registry is declared under both of its addresses — the one across
+  // the link the client fetches from and the one the server resolves against.
   const measuredConfig = {
     npm: { managersDir: managersDirs.npm },
     pnpm11: { managersDir: managersDirs.pnpm11 },
@@ -236,13 +239,19 @@ async function measure () {
     pnpm12_hoisted: { managersDir: managersDirs.pnpm12 },
     pnpm_pnpr: {
       managersDir: managersDirs.pnpm12,
+      registry: registry.tarUrl,
+      tarRegistries: [registry.tarUrl, registry.serverDirectTarUrl],
       pnprServer: registry.resolverUrl,
-      pnprServerRegistry: registry.serverDirectUrl,
+      pnprServerRegistry: registry.serverDirectTarUrl,
       authToken: registry.authToken,
     },
     yarn: { managersDir: managersDirs.yarn },
     bun: { managersDir: managersDirs.bun },
   }
+  // The command every manager is measured with, pointed at its registry.
+  const pmCommands = Object.fromEntries(
+    Object.entries(cmdsMap).map(([key, pm]) => [key, registry.withRegistry(pm, measuredConfig[key]?.registry)])
+  )
   // A manager with nowhere to install from would otherwise fail eight minutes
   // into the run, on the one it was mistyped for.
   for (const { key } of pmConfigs) {

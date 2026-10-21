@@ -39,6 +39,7 @@ export default async function (pm, fixture, opts) {
     authToken: opts.authToken,
     pnprServer: opts.pnprServer,
     pnprServerRegistry: opts.pnprServerRegistry,
+    tarRegistries: opts.tarRegistries,
   })
   const results = [...prevResults, newResults]
   await writeYamlFile(resultsFile, results)
