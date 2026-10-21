@@ -28,3 +28,33 @@
   withWarmModules: 136
   updatedDependencies: 2477
   size: 924135746
+- firstInstall: 13652
+  repeatInstall: 20
+  withWarmCacheAndLockfile: 2359
+  withWarmCache: 3394
+  withLockfile: 9146
+  withWarmCacheAndModules: 103
+  withWarmModulesAndLockfile: 19
+  withWarmModules: 166
+  updatedDependencies: 2100
+  size: 924160322
+- firstInstall: 14355
+  repeatInstall: 20
+  withWarmCacheAndLockfile: 3303
+  withWarmCache: 4642
+  withLockfile: 9155
+  withWarmCacheAndModules: 146
+  withWarmModulesAndLockfile: 22
+  withWarmModules: 259
+  updatedDependencies: 2208
+  size: 924127554
+- firstInstall: 15492
+  repeatInstall: 23
+  withWarmCacheAndLockfile: 2408
+  withWarmCache: 3565
+  withLockfile: 9199
+  withWarmCacheAndModules: 116
+  withWarmModulesAndLockfile: 26
+  withWarmModules: 240
+  updatedDependencies: 2435
+  size: 924127554
