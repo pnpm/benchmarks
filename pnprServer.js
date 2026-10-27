@@ -108,7 +108,7 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     '  htpasswd:',
     `    file: ${path.join(dir, 'htpasswd')}`,
     // The benchmark registers its own resolver user on startup.
-    '    max_users: 1',
+    '    maxUsers: 1',
     'registries:',
     // The public npm registry. No `packages:` map, so it claims every
     // name — the catch-all, and therefore last in the router's sources.
@@ -179,7 +179,7 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     ...(publicUrl ? ['--public-url', publicUrl] : []),
     // Packuments are fetched from npmjs once and then treated as authoritative,
     // so no scenario pays for a revalidation another scenario already paid for.
-    '--packument-ttl-secs', '31536000',
+    '--packument-ttl', '365d',
   ], {
     cwd: managersDir,
     env: createEnv(managersDir),
