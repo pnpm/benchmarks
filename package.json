@@ -12,7 +12,7 @@
         "benchmark": "node ./index.js",
         "report": "node ./index.js --report-only",
         "merge-results": "node ./mergeResults.js",
-        "test": "node --test latencyProxy.test.mjs",
+        "test": "node --test latencyProxy.test.mjs pnprServer.test.mjs",
         "populate-cache": "node ./populatePnprCache.js"
     },
     "dependencies": {
