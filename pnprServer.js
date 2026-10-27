@@ -328,7 +328,7 @@ export async function populateCache ({ pm, managersDir, dir, registry, tarRegist
       if (result.status !== 0) {
         throw new Error(`Populating the pnpr cache (${label} registry, ${graph}) failed with status code ${result.status}`)
       }
-      if (label === '.tgz') collectLockedPackages(path.join(cwd, 'pnpm-lock.yaml'), packages)
+      if (label === '.tgz') collectLockedPackages(path.join(cwd, 'pnpm-lock.yaml'), registry, packages)
     }
     install('fixture')
 
@@ -342,14 +342,22 @@ export async function populateCache ({ pm, managersDir, dir, registry, tarRegist
 }
 
 /** Adds every registry package a lockfile pins to `packages`, keyed by `name@version`. */
-function collectLockedPackages (lockfilePath, packages) {
+export function collectLockedPackages (lockfilePath, registry, packages) {
   const lockfile = loadYamlFileSync(lockfilePath)
+  let added = 0
   for (const [key, entry] of Object.entries(lockfile?.packages ?? {})) {
     const integrity = entry?.resolution?.integrity
+    const tarball = entry?.resolution?.tarball
     // A tarball, git or directory dependency is not the registry's to encode.
-    if (!integrity || entry.resolution.tarball || entry.resolution.type) continue
+    // pnpr rewrites a registry package's dist.tarball to `<registry><name>@<version>`,
+    // which pnpm records in `resolution.tarball` when `serverType: pnpr` is not set.
+    if (!integrity || entry.resolution.type || (tarball && !tarball.startsWith(registry))) continue
     const at = key.indexOf('@', 1)
     packages.set(key, { name: key.slice(0, at), version: key.slice(at + 1), integrity })
+    added++
+  }
+  if (added === 0) {
+    throw new Error(`No registry packages found in ${lockfilePath}`)
   }
 }
 
@@ -386,19 +394,13 @@ const ZSTD_ROUNDS = 3
  * among the copies, so the first wait can be long.
  *
  * This reads where pnpr keeps the encodings (the `~tar-zstd19` namespace of
- * its cache, in the storage's layout), which is pnpr's business rather than a
- * contract: if the layout ever moves, this says so and carries on — the
- * benchmark is then merely measuring level 3, not wrong.
+ * its cache, in the storage's layout). If none appear there, the warm-up
+ * fails rather than leaving the measured runs to benchmark level 3.
  */
-async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
+export async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
   const variantsDir = path.join(storageDir, '.pnpr-cache', '~tar-zstd19', 'packages')
-  const variantPath = ({ name, integrity }) => path.join(
-    variantsDir,
-    encodeSegment(name),
-    'blobs',
-    `${crypto.createHash('sha256').update(integrity).digest('hex')}.tar.zst`
-  )
-  const encoded = (pkg) => fs.existsSync(variantPath(pkg))
+  const encoded = (pkg) => fs.existsSync(variantPath(variantsDir, pkg))
+  await waitForWorker(variantsDir, 0)
   let missing = [...packages.values()].filter((pkg) => !encoded(pkg))
   console.log(`# making level-19 zstd encodings for ${missing.length} of ${packages.size} tars`)
   const started = Date.now()
@@ -414,14 +416,35 @@ async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) {
     await waitForWorker(variantsDir, 0)
     missing = missing.filter((pkg) => !encoded(pkg))
   }
-  const anyEncoded = fs.existsSync(variantsDir) &&
-    fs.readdirSync(variantsDir, { recursive: true }).some((file) => file.endsWith('.tar.zst'))
-  if (missing.length > 0 && !anyEncoded) {
-    console.log(`# no level-19 encoding appeared under ${variantsDir}; pnpr may keep them elsewhere now, so the tars stay at level 3`)
-    return
+  if (packages.size === 0 || missing.length === packages.size) {
+    throw new Error(`No level-19 zstd encoding appeared at the expected path under ${variantsDir}`)
   }
   console.log(`# level-19 zstd encodings made in ${Math.round((Date.now() - started) / 1000)}s` +
     (missing.length ? `; ${missing.length} tars stay at level 3` : ''))
+}
+
+/** Where pnpr stores the level-19 zstd encoding of `pkg` under `variantsDir`. */
+export function variantPath (variantsDir, { name, integrity }) {
+  return path.join(
+    variantsDir,
+    ...packageSegments(name),
+    'blobs',
+    `${crypto.createHash('sha256').update(integrity).digest('hex')}.tar.zst`
+  )
+}
+
+/**
+ * pnpr's directory segments for an npm package name below `packages/`:
+ * `@<scope>/<name>` for a scoped package, `@/<name>` otherwise.
+ */
+export function packageSegments (name) {
+  if (name.startsWith('@')) {
+    const slash = name.indexOf('/')
+    if (slash > 1 && slash < name.length - 1) {
+      return [`@${encodeSegment(name.slice(1, slash))}`, encodeSegment(name.slice(slash + 1))]
+    }
+  }
+  return ['@', encodeSegment(name)]
 }
 
 /**
