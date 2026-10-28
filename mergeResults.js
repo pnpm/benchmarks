@@ -1,9 +1,11 @@
 'use strict'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { loadYamlFile } from 'load-yaml-file'
 import writeYamlFile from 'write-yaml-file'
+
 import { LIMIT_RUNS } from './recordBenchmark.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -79,15 +81,18 @@ async function main () {
   for (const runDir of runDirs) {
     for (const file of resultFiles(path.join(runDir, 'results'))) {
       if (baselines.has(file)) continue
+      // eslint-disable-next-line no-await-in-loop -- reads one results file at a time
       baselines.set(file, (await readSamples(path.join(RESULTS, file))).length)
     }
   }
 
   let added = 0
   for (const [file, baseline] of baselines) {
+    // eslint-disable-next-line no-await-in-loop -- reads one results file at a time
     const merged = await readSamples(path.join(RESULTS, file))
     const before = merged.length
     for (const runDir of runDirs) {
+      // eslint-disable-next-line no-await-in-loop -- reads one results file at a time
       const samples = await readSamples(path.join(runDir, 'results', file))
       // A run that hit `LIMIT_RUNS` added nothing, and slicing gives nothing.
       // A file no earlier run recorded has no baseline, so all of it is new.
@@ -103,6 +108,7 @@ async function main () {
     // from the same baseline and so can carry it past the cap together — 29
     // samples plus one from each run is 32. The oldest go, because the cap is
     // there to bound how far back a file reaches.
+    // eslint-disable-next-line no-await-in-loop -- writes one results file at a time
     await writeYamlFile(path.join(RESULTS, file), merged.slice(-LIMIT_RUNS))
   }
 

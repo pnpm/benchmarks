@@ -14,8 +14,10 @@ import crypto from 'node:crypto'
 import http from 'node:http'
 import path from 'node:path'
 import test from 'node:test'
+
 import tempy from 'tempy'
-import { startLatencyProxy, mbpsToBytesPerSec } from './latencyProxy.js'
+
+import { mbpsToBytesPerSec, startLatencyProxy } from './latencyProxy.js'
 
 const BODY = crypto.randomBytes(4 * 1024 * 1024)
 const DIGEST = crypto.createHash('sha256').update(BODY).digest('hex')
@@ -118,9 +120,10 @@ test('responses survive intact over reused and concurrent connections', async ()
   const proxy = await proxyFor(origin.port, { roundTripMs: 20, rateLimit: mbpsToBytesPerSec(200) })
   const agent = new http.Agent({ keepAlive: true })
   try {
-    for (let i = 0; i < 10; i++) {
+    for (let request = 0; request < 10; request++) {
+      // eslint-disable-next-line no-await-in-loop -- the requests must reuse one keep-alive connection in turn
       const result = await fetchThrough(proxy.port, '/big', agent)
-      assert.equal(result.digest, DIGEST, `keep-alive request ${i} came back truncated`)
+      assert.equal(result.digest, DIGEST, `keep-alive request ${request} came back truncated`)
     }
     const concurrent = await Promise.all(
       Array.from({ length: 8 }, () => fetchThrough(proxy.port, '/big'))

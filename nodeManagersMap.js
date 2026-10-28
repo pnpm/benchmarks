@@ -1,6 +1,6 @@
 // Tools compared on installing and switching Node.js versions.
 // The scenarios themselves live in `benchmarkNodeVersions.js`.
-export default {
+export const nodeManagersMap = {
   pnpm12: {
     scenario: 'pnpm12',
     name: 'pnpm',

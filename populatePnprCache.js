@@ -1,12 +1,14 @@
 'use strict'
-import fs from 'fs'
-import path from 'path'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import tempy from 'tempy'
-import { fileURLToPath } from 'url'
-import cmdsMap from './commandsMap.js'
+
+import { cmdsMap } from './commandsMap.js'
 import { fixtureNames } from './fixtures.js'
-import { bootstrapInstaller, provisionPnpm12 } from './setupPackageManagers.js'
 import { installPnpr, npmRegistryUrl, populateCache, reservePort, startPnpr, tarRegistryUrl } from './pnprServer.js'
+import { bootstrapInstaller, provisionPnpm12 } from './setupPackageManagers.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 /** Where the populated storage lands, unless a path is given. */
@@ -54,6 +56,7 @@ async function run () {
   const server = await startPnpr({ managersDir: managersDirs.pnpr, dir, port })
   try {
     for (const fixtureName of fixtureNames) {
+      // eslint-disable-next-line no-await-in-loop -- the fixtures warm one shared registry one after another
       await populateCache({
         pm: withRegistry(cmdsMap.pnpm12, npmRegistryUrl(server.url)),
         managersDir: managersDirs.pnpm,

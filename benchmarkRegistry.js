@@ -1,19 +1,20 @@
 'use strict'
-import fs from 'fs'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import cmdsMap from './commandsMap.js'
-import { startLatencyProxy, mbpsToBytesPerSec } from './latencyProxy.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { cmdsMap } from './commandsMap.js'
+import { mbpsToBytesPerSec, startLatencyProxy } from './latencyProxy.js'
 import {
   installPnpr,
-  pnprVersion,
-  startPnpr,
   mintToken,
-  populateCache,
-  verifyResolverIsUsed,
-  reservePort,
   npmRegistryUrl,
+  pnprVersion,
+  populateCache,
+  reservePort,
+  startPnpr,
   tarRegistryUrl,
+  verifyResolverIsUsed,
 } from './pnprServer.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -152,6 +153,7 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
       console.log(`# pnpr storage seeded from ${seededStorage} (cache warm-up skipped)`)
     } else {
       for (const fixtureName of fixtureNames) {
+        // eslint-disable-next-line no-await-in-loop -- the fixtures warm one shared registry one after another
         await populateCache({
           pm: withRegistry(cmdsMap.pnpm12, url),
           managersDir: managersDirs.pnpm12,

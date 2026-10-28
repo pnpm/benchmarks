@@ -1,11 +1,12 @@
 'use strict'
-import path from 'path'
-import pathKey from 'path-key'
-import spawn from "cross-spawn"
-import { promises as fs, cpSync } from 'fs'
+import { cpSync, promises as fs } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import spawn from 'cross-spawn'
 import getFolderSize from 'get-folder-size'
+import pathKey from 'path-key'
 import rimraf from 'rimraf'
-import { fileURLToPath } from 'url'
 import tempy from 'tempy'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -17,7 +18,7 @@ const lockfileNameByPM = {
   npm: 'package-lock.json',
   pnpm: 'pnpm-lock.yaml',
   yarn: 'yarn.lock',
-  bun: 'bun.lock'
+  bun: 'bun.lock',
 }
 
 export function createEnv (managersDir) {
@@ -45,7 +46,7 @@ export function createEnv (managersDir) {
     // Where tools installed as packages keep theirs — pnpr today.
     path.join(managersDir, 'node_modules/.bin'),
     path.dirname(process.execPath),
-    process.env[pathEnv]
+    process.env[pathEnv],
   ].join(path.delimiter)
   return env
 }
@@ -76,7 +77,7 @@ function cleanLockfile (pm, cwd, env) {
   rimraf.sync(path.join(cwd, lockfileName))
   if (pm.name === 'yarn') {
     // This ensures yarn berry to install under a nested folder
-    spawnSyncOrThrow({ name: 'nodetouch', args: [lockfileName] }, { env, cwd, stdio: "inherit" })
+    spawnSyncOrThrow({ name: 'nodetouch', args: [lockfileName] }, { env, cwd, stdio: 'inherit' })
   }
 }
 
@@ -88,49 +89,49 @@ function cleanLockfile (pm, cwd, env) {
  * pull it from npmjs inside a measured run.
  */
 export const UPDATED_DEPENDENCIES = {
-  "babel-core": "^6.4.0",
-  "babel-eslint": "^6.1.2",
-  "babel-loader": "^6.2.1",
-  "babel-plugin-lodash": "^3.2.11",
-  "babel-plugin-module-resolver": "^2.2.0",
-  "babel-plugin-transform-decorators-legacy": "^1.3.4",
-  "babel-plugin-transform-runtime": "^6.4.3",
-  "babel-polyfill": "^6.23.0",
-  "babel-preset-es2015": "^6.3.13",
-  "babel-preset-react": "^6.3.13",
-  "babel-preset-react-hmre": "^1.0.1",
-  "babel-preset-stage-1": "^6.3.13",
-  "babel-runtime": "^6.3.19",
-  "clean-webpack-plugin": "^0.1.16",
-  "core-decorators": "^0.12.3",
-  "css-loader": "^0.23.1",
-  "css-mqpacker": "^4.0.0",
-  "react": "^15.4.1",
-  "react-addons-css-transition-group": "^15.3.0",
-  "react-addons-shallow-compare": "^15.3.0",
-  "react-dnd": "^2.1.4",
-  "react-dnd-html5-backend": "^2.1.2",
-  "react-dom": "^15.4.1",
-  "react-draft-wysiwyg": "^1.6.5",
-  "react-dropzone": "^3.5.3",
-  "react-grid-layout": "^0.12.6",
-  "react-highcharts": "^11.5.0",
-  "react-hot-loader": "v3.0.0-beta.6",
-  "react-input-calendar": "^0.3.14",
-  "react-lazyload": "^2.2.5",
-  "react-measure": "^1.4.6",
-  "react-mixin": "^3.0.3",
-  "react-responsive": "^1.2.5",
-  "react-responsive-tabs": "^0.5.3",
-  "react-router": "^4.0.0",
-  "react-router-dom": "^4.0.0",
-  "react-select-plus": "^1.0.0-rc",
-  "react-skylight": "^0.3.0",
-  "react-sortablejs": "^1.2.1",
-  "react-tappable": "^0.8.4",
-  "react-tooltip": "3.11.2",
-  "react-virtualized": "^7.19.4",
-  "react-waypoint": "^5.2.0",
+  'babel-core': '^6.4.0',
+  'babel-eslint': '^6.1.2',
+  'babel-loader': '^6.2.1',
+  'babel-plugin-lodash': '^3.2.11',
+  'babel-plugin-module-resolver': '^2.2.0',
+  'babel-plugin-transform-decorators-legacy': '^1.3.4',
+  'babel-plugin-transform-runtime': '^6.4.3',
+  'babel-polyfill': '^6.23.0',
+  'babel-preset-es2015': '^6.3.13',
+  'babel-preset-react': '^6.3.13',
+  'babel-preset-react-hmre': '^1.0.1',
+  'babel-preset-stage-1': '^6.3.13',
+  'babel-runtime': '^6.3.19',
+  'clean-webpack-plugin': '^0.1.16',
+  'core-decorators': '^0.12.3',
+  'css-loader': '^0.23.1',
+  'css-mqpacker': '^4.0.0',
+  'react': '^15.4.1',
+  'react-addons-css-transition-group': '^15.3.0',
+  'react-addons-shallow-compare': '^15.3.0',
+  'react-dnd': '^2.1.4',
+  'react-dnd-html5-backend': '^2.1.2',
+  'react-dom': '^15.4.1',
+  'react-draft-wysiwyg': '^1.6.5',
+  'react-dropzone': '^3.5.3',
+  'react-grid-layout': '^0.12.6',
+  'react-highcharts': '^11.5.0',
+  'react-hot-loader': 'v3.0.0-beta.6',
+  'react-input-calendar': '^0.3.14',
+  'react-lazyload': '^2.2.5',
+  'react-measure': '^1.4.6',
+  'react-mixin': '^3.0.3',
+  'react-responsive': '^1.2.5',
+  'react-responsive-tabs': '^0.5.3',
+  'react-router': '^4.0.0',
+  'react-router-dom': '^4.0.0',
+  'react-select-plus': '^1.0.0-rc',
+  'react-skylight': '^0.3.0',
+  'react-sortablejs': '^1.2.1',
+  'react-tappable': '^0.8.4',
+  'react-tooltip': '3.11.2',
+  'react-virtualized': '^7.19.4',
+  'react-waypoint': '^5.2.0',
 }
 
 async function updateDependenciesInPackageJson (cwd) {
@@ -262,7 +263,7 @@ function removeInstallOutput (cwd, modules) {
   }
 }
 
-export default async function benchmark (pm, fixture, opts) {
+export async function benchmark (pm, fixture, opts) {
   const cwd = path.join(TMP, pm.scenario, fixture)
   const env = createEnv(opts.managersDir)
   if (pm.rustEngine) {
@@ -348,13 +349,13 @@ export default async function benchmark (pm, fixture, opts) {
   rimraf.sync(path.join(cwd, 'cache'))
   cleanLockfile(pm, cwd, env)
 
-  console.log(`# first install`)
+  console.log('# first install')
 
   const firstInstall = measureInstall(pm, cwd, env)
 
   let repeatInstall
   if (modules) {
-    console.log(`# repeat install`)
+    console.log('# repeat install')
 
     repeatInstall = measureInstall(pm, cwd, env)
 
@@ -363,7 +364,7 @@ export default async function benchmark (pm, fixture, opts) {
     repeatInstall = 0
   }
 
-  console.log(`# with warm cache and lockfile`)
+  console.log('# with warm cache and lockfile')
 
   const withWarmCacheAndLockfile = measureInstall(pm, cwd, env)
 
@@ -414,7 +415,7 @@ export default async function benchmark (pm, fixture, opts) {
   } else {
     withWarmCacheAndModules =
       withWarmModulesAndLockfile =
-      withWarmModules = 0
+        withWarmModules = 0
     size = await getFolderSize.loose(path.join(cwd, 'cache'))
   }
 
@@ -490,7 +491,7 @@ export default async function benchmark (pm, fixture, opts) {
     withWarmModulesAndLockfile,
     withWarmModules,
     updatedDependencies,
-    size
+    size,
   }
 }
 
@@ -511,7 +512,7 @@ function measureInstall (cmd, cwd, env) {
   const startTime = Date.now()
 
   console.log(`> ${cmd.name} ${cmd.args.join(' ')}`)
-  spawnSyncOrThrow(cmd, { env, cwd, stdio: "inherit" });
+  spawnSyncOrThrow(cmd, { env, cwd, stdio: 'inherit' });
 
   const endTime = Date.now()
 
