@@ -13,6 +13,7 @@
         "report": "node ./index.js --report-only",
         "merge-results": "node ./mergeResults.js",
         "test": "node --test latencyProxy.test.mjs pnprServer.test.mjs",
+        "lint": "eslint .",
         "populate-cache": "node ./populatePnprCache.js"
     },
     "dependencies": {
@@ -36,5 +37,13 @@
             "version": "^24.0.0",
             "onFail": "download"
         }
+    },
+    "devDependencies": {
+        "@pnpm/eslint-config": "1100.0.2",
+        "@types/node": "^24.19.2",
+        "eslint": "^10.13.0",
+        "eslint-plugin-jest": "^29.17.0",
+        "eslint-plugin-regexp": "^3.3.1",
+        "typescript": "6.0.3"
     }
 }

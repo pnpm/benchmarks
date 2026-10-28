@@ -1,12 +1,14 @@
 'use strict'
-import crypto from 'crypto'
-import fs from 'fs'
-import http from 'http'
-import net from 'net'
-import path from 'path'
+import crypto from 'node:crypto'
+import fs from 'node:fs'
+import http from 'node:http'
+import net from 'node:net'
+import path from 'node:path'
+
 import spawn from 'cross-spawn'
 import { loadYamlFileSync } from 'load-yaml-file'
-import { createEnv, applyPnprServerRegistry, pnpmWorkspaceYaml, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
+
+import { applyPnprServerRegistry, createEnv, pnpmWorkspaceYaml, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
 
 /**
  * Takes a port the operating system says is free.
@@ -186,7 +188,9 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     stdio: ['ignore', logFd, logFd],
   })
   fs.closeSync(logFd)
-  proc.on('error', (err) => { throw err })
+  proc.on('error', (err) => {
+    throw err
+  })
 
   const readLog = () => {
     try {
@@ -197,7 +201,9 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
   }
 
   let exit = null
-  proc.on('exit', (code, signal) => { exit = { code, signal } })
+  proc.on('exit', (code, signal) => {
+    exit = { code, signal }
+  })
 
   const url = `http://127.0.0.1:${port}`
   await waitForPnpr(url, proc, readLog)
@@ -218,7 +224,9 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     stop: () => {
       if (exit) return
       proc.kill()
-      setTimeout(() => { if (!exit) proc.kill('SIGKILL') }, 2_000).unref()
+      setTimeout(() => {
+        if (!exit) proc.kill('SIGKILL')
+      }, 2_000).unref()
     },
   }
 }
@@ -230,6 +238,7 @@ async function waitForPnpr (url, proc, getStderr) {
       throw new Error(`pnpr exited with code ${proc.exitCode}. ${getStderr()}`)
     }
     try {
+      // eslint-disable-next-line no-await-in-loop -- polling: each check waits for the previous delay
       const res = await fetch(`${url}/-/ping`)
       if (res.ok) {
         // Something answering is not the same as our server answering. A server
@@ -237,6 +246,7 @@ async function waitForPnpr (url, proc, getStderr) {
         // started here has had time to discover it cannot have the port and
         // exit, so the reply alone proves nothing — give it long enough to fail
         // and then insist it is still running.
+        // eslint-disable-next-line no-await-in-loop -- gives a stale server time to be told apart from ours
         await new Promise((resolve) => setTimeout(resolve, 500))
         if (proc.exitCode !== null) {
           throw new Error(
@@ -250,6 +260,7 @@ async function waitForPnpr (url, proc, getStderr) {
       if (err.message?.startsWith('pnpr exited')) throw err
       // Not listening yet.
     }
+    // eslint-disable-next-line no-await-in-loop -- polling: each check waits for the previous delay
     await new Promise((resolve) => setTimeout(resolve, 200))
   }
   throw new Error(`pnpr did not start listening on ${url}. ${getStderr()}`)
@@ -409,10 +420,13 @@ export async function warmZstdEncodings ({ storageDir, tarRegistry, packages }) 
   for (let round = 0; round < ZSTD_ROUNDS && missing.length > 0; round++) {
     let room = 0
     for (const pkg of missing) {
+      // eslint-disable-next-line no-await-in-loop -- throttles to the copies the zstd worker can take
       if (room === 0) room = ZSTD_IN_FLIGHT - await waitForWorker(variantsDir, ZSTD_IN_FLIGHT - 1)
+      // eslint-disable-next-line no-await-in-loop -- throttles to the copies the zstd worker can take
       await drain(`${tarRegistry}${pkg.name}@${pkg.version}`)
       room--
     }
+    // eslint-disable-next-line no-await-in-loop -- waits for the worker to drain before the next round
     await waitForWorker(variantsDir, 0)
     missing = missing.filter((pkg) => !encoded(pkg))
   }
@@ -459,6 +473,7 @@ async function waitForWorker (variantsDir, max) {
     if (Date.now() - lastProgress > ZSTD_STALL_MS) {
       throw new Error(`pnpr's zstd worker finished nothing in ${ZSTD_STALL_MS / 1000}s with ${queued} copies queued under ${variantsDir}`)
     }
+    // eslint-disable-next-line no-await-in-loop -- polling: each check waits for the previous delay
     await new Promise((resolve) => setTimeout(resolve, 250))
     const now = countCopies(variantsDir)
     if (now < queued) lastProgress = Date.now()

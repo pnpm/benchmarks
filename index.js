@@ -1,21 +1,24 @@
 'use strict'
-import fs from 'fs'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import rimraf from 'rimraf'
 import tempy from 'tempy'
-import cmdsMap from './commandsMap.js'
-import nodeManagersMap from './nodeManagersMap.js'
-import benchmark, { LIMIT_RUNS, readRecordedResults } from './recordBenchmark.js'
-import benchmarkNodeVersions, {
+
+import {
+  benchmarkNodeVersions,
   cloneNvm,
-  readManagerVersion,
   PRIMARY_NODE_VERSION,
+  readManagerVersion,
   SECONDARY_NODE_VERSION,
 } from './benchmarkNodeVersions.js'
-import { startBenchmarkRegistry, ROUND_TRIP_MS, BANDWIDTH_MBPS, RESULTS_SUFFIX } from './benchmarkRegistry.js'
+import { BANDWIDTH_MBPS, RESULTS_SUFFIX, ROUND_TRIP_MS, startBenchmarkRegistry } from './benchmarkRegistry.js'
+import { cmdsMap } from './commandsMap.js'
+import { fixtureNames, fixtures } from './fixtures.js'
+import { nodeManagersMap } from './nodeManagersMap.js'
+import { LIMIT_RUNS, readRecordedResults, recordBenchmark } from './recordBenchmark.js'
 import { bootstrapInstaller, provisionPackageManagers } from './setupPackageManagers.js'
-import { fixtures, fixtureNames } from './fixtures.js'
-import path from 'path'
-import { fileURLToPath } from 'url'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 const TMP = path.join(DIRNAME, '.tmp')
@@ -63,7 +66,7 @@ const tests = [
   'withWarmCacheAndLockfile',
   'withWarmModulesAndLockfile',
   'repeatInstall',
-  'updatedDependencies'
+  'updatedDependencies',
 ]
 
 // The scenarios the Node.js version managers are measured on. They live in
@@ -108,7 +111,8 @@ async function report () {
   } catch (err) {
     throw new Error(
       `Couldn't read the versions a measuring run recorded at ${versionsFile}. ` +
-      `A reporting run needs it to label the manifest and to find the results. ${err.message}`
+      `A reporting run needs it to label the manifest and to find the results. ${err.message}`,
+      { cause: err }
     )
   }
   // The manifest crosses a job boundary, so it is worth insisting on rather
@@ -260,7 +264,7 @@ async function measure () {
     }
   }
   const runFixture = async ({ key, hasNodeModules }, fixtureName) => {
-    const results = await benchmark(pmCommands[key], fixtureName, {
+    const results = await recordBenchmark(pmCommands[key], fixtureName, {
       limitRuns: LIMIT_RUNS,
       // Filed under a name of their own: these runs are measured against our
       // own registry over an emulated link, so pooling them with the runs
@@ -288,7 +292,7 @@ async function measure () {
   }
 
   const nodeManagers = await collectNodeVersionManagers({
-    runManager: (pm) => benchmark(pm, 'node-versions', {
+    runManager: (pm) => recordBenchmark(pm, 'node-versions', {
       limitRuns: LIMIT_RUNS,
       managersDir: managersDirs[pm.scenario],
       getVersion: readManagerVersion,
@@ -322,6 +326,7 @@ async function collectFixtures ({ pmCommands, runFixture }) {
       if (skipManagers.includes(config.key)) continue
       packageManagers[config.key] = {
         version: pmCommands[config.key].version,
+        // eslint-disable-next-line no-await-in-loop -- measurements run one at a time so they do not compete for the machine
         results: min(await runFixture(config, name), tests),
       }
     }
@@ -334,6 +339,7 @@ async function collectFixtures ({ pmCommands, runFixture }) {
 async function collectNodeVersionManagers ({ runManager, versionOf }) {
   const managers = {}
   for (const [key, pm] of Object.entries(nodeManagersMap)) {
+    // eslint-disable-next-line no-await-in-loop -- measurements run one at a time so they do not compete for the machine
     const samples = await runManager(pm)
     managers[key] = {
       version: versionOf?.(key) ?? pm.version,

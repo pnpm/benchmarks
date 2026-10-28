@@ -1,10 +1,12 @@
 'use strict'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import spawn from 'cross-spawn'
-import benchmark, { createEnv } from './benchmarkFixture.js'
-import path from 'path'
-import writeYamlFile from 'write-yaml-file'
 import { loadYamlFile } from 'load-yaml-file'
-import { fileURLToPath } from 'url'
+import writeYamlFile from 'write-yaml-file'
+
+import { benchmark, createEnv } from './benchmarkFixture.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 const RESULTS = path.join(DIRNAME, 'results')
@@ -14,7 +16,7 @@ const RESULTS = path.join(DIRNAME, 'results')
 // has to hold the same bound when it folds several runs' samples together.
 export const LIMIT_RUNS = 30
 
-export default async function (pm, fixture, opts) {
+export async function recordBenchmark (pm, fixture, opts) {
   opts = opts || {}
   const limitRuns = opts.limitRuns || Infinity
   // Sections that don't install a fixture (the Node.js version managers, for
@@ -66,7 +68,7 @@ export async function readRecordedResults (pm, fixture, opts = {}) {
   if (!results?.length) {
     throw new Error(
       `No recorded results at ${resultsFile}. A reporting run draws the page from what a ` +
-      `measuring run recorded; it measures nothing itself.`
+      'measuring run recorded; it measures nothing itself.'
     )
   }
   return results

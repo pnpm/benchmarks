@@ -1,8 +1,9 @@
 'use strict'
-import fs from 'fs'
-import path from 'path'
-import pathKey from 'path-key'
+import fs from 'node:fs'
+import path from 'node:path'
+
 import spawn from 'cross-spawn'
+import pathKey from 'path-key'
 
 /**
  * pnpm 12 installs the other package managers natively: `pnpm add --global`

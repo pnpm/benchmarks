@@ -6,7 +6,7 @@
 // Nor does anything here say which of them a reader is shown. Every manager
 // listed is measured and reported in `benchmarks.json`; pnpm.io draws npm and
 // the pnpm columns from it, and the rest are measured for our own comparisons.
-export default {
+export const cmdsMap = {
   npm: {
     scenario: 'npm',
     name: 'npm',
@@ -20,7 +20,7 @@ export default {
       '--legacy-peer-deps',
       // npm CLI fails on the benchmarks with this option. So, commenting out for now.
       // '--install-strategy=linked',
-    ]
+    ],
   },
   pnpm11: {
     scenario: 'pnpm11',
@@ -34,7 +34,7 @@ export default {
       '--no-strict-peer-dependencies',
       '--config.auto-install-peers=false',
       '--config.resolution-mode=highest',
-    ]
+    ],
   },
   pnpm12: {
     scenario: 'pnpm12',
@@ -46,7 +46,7 @@ export default {
     args: [
       'install',
       '--ignore-scripts',
-    ]
+    ],
   },
   // The two scenarios below are the same pnpm 12 as the row above, measured
   // under a different linking strategy. Neither changes the command: the
@@ -95,14 +95,14 @@ export default {
     args: [
       'install',
       '--ignore-scripts',
-    ]
+    ],
   },
   yarn: {
     scenario: 'yarn',
     name: 'yarn',
     args: [
-      'install'
-    ]
+      'install',
+    ],
   },
   bun: {
     scenario: 'bun',
@@ -116,6 +116,6 @@ export default {
       // scenario that starts without a lockfile. Yarn is opted out of the same
       // behaviour through `enableImmutableInstalls: false`.
       '--no-frozen-lockfile',
-    ]
-  }
+    ],
+  },
 }

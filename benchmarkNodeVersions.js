@@ -1,10 +1,12 @@
 'use strict'
-import fs from 'fs'
-import path from 'path'
-import rimraf from 'rimraf'
-import pathKey from 'path-key'
+import fs from 'node:fs'
+import path from 'node:path'
+
 import spawn from 'cross-spawn'
+import pathKey from 'path-key'
+import rimraf from 'rimraf'
 import tempy from 'tempy'
+
 import { createEnv } from './benchmarkFixture.js'
 
 const TMP = tempy.directory()
@@ -190,7 +192,7 @@ export function readManagerVersion (pm, opts) {
   return captureShell(runner, 'nvm --version', opts.managersDir, env).trim()
 }
 
-export default async function benchmarkNodeVersions (pm, opts) {
+export async function benchmarkNodeVersions (pm, opts) {
   const dir = path.join(TMP, pm.scenario)
   rimraf.sync(dir)
   fs.mkdirSync(dir, { recursive: true })
@@ -332,5 +334,5 @@ function nvmSourceDir (managersDir) {
 }
 
 function quote (value) {
-  return `'${value.replace(/'/g, `'\\''`)}'`
+  return `'${value.replace(/'/g, "'\\''")}'`
 }

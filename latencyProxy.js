@@ -1,9 +1,10 @@
 'use strict'
-import fs from 'fs'
-import net from 'net'
-import path from 'path'
+import fs from 'node:fs'
+import net from 'node:net'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import spawn from 'cross-spawn'
-import { fileURLToPath } from 'url'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
 
@@ -132,7 +133,11 @@ function pump (src, dst, profile, link) {
     })
   })
 
-  src.on('end', () => { queue = queue.then(() => { if (!dst.destroyed) dst.end() }).catch(() => {}) })
+  src.on('end', () => {
+    queue = queue.then(() => {
+      if (!dst.destroyed) dst.end()
+    }).catch(() => {})
+  })
   src.on('error', () => dst.destroy())
 
   return { flushed: () => queue }
@@ -165,8 +170,12 @@ function listen ({ upstreamPort, roundTripMs, rateLimit, slowStart }) {
     // held. Waiting for the direction to drain first keeps the destroy doing
     // what it is for — releasing a connection nobody will finish — which
     // matters because an install opens a great many of them.
-    upstream.on('close', () => { toClient.flushed().finally(() => client.destroy()) })
-    client.on('close', () => { toUpstream.flushed().finally(() => upstream.destroy()) })
+    upstream.on('close', () => {
+      void toClient.flushed().finally(() => client.destroy())
+    })
+    client.on('close', () => {
+      void toUpstream.flushed().finally(() => upstream.destroy())
+    })
   })
   // Accepting a connection can fail without the listener being finished — most
   // of all by running out of file descriptors, which a proxy is twice as prone
@@ -205,7 +214,9 @@ export async function startLatencyProxy ({ upstreamPort, roundTripMs, rateLimit 
   fs.closeSync(logFd)
 
   let exit = null
-  proc.on('exit', (code, signal) => { exit = { code, signal } })
+  proc.on('exit', (code, signal) => {
+    exit = { code, signal }
+  })
 
   const deadline = Date.now() + 15_000
   while (Date.now() < deadline) {
@@ -228,12 +239,15 @@ export async function startLatencyProxy ({ upstreamPort, roundTripMs, rateLimit 
             `Everything measured after it would be meaningless. Its log:\n${fs.readFileSync(logPath, 'utf8').slice(-4000)}`
           )
         },
-        close: () => { proc.kill() },
+        close: () => {
+          proc.kill()
+        },
       }
     }
     if (proc.exitCode !== null) {
       throw new Error(`The latency proxy exited with code ${proc.exitCode}. ${log}`)
     }
+    // eslint-disable-next-line no-await-in-loop -- polling: each check waits for the previous delay
     await sleep(100)
   }
   // A proxy that is alive but never reported a port would otherwise outlive the
