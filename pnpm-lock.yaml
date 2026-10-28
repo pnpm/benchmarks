@@ -318,7 +318,7 @@ packages:
     engines: {node: '>= 8'}
 
   '@pnpm/eslint-config@1100.0.2':
-    resolution: {integrity: sha512-gKpQ6lUCu2vOKtoK5Ho/engK4NwHlbpxB9C+HFiYHQ1tNzD2jyjkAK5mUdHw2BcioX708d4mmoSSWhm4o4HTTg==, tarball: https://node-registry.bit.cloud/@pnpm/eslint-config/-/eslint-config-1100.0.2.tgz}
+    resolution: {integrity: sha512-gKpQ6lUCu2vOKtoK5Ho/engK4NwHlbpxB9C+HFiYHQ1tNzD2jyjkAK5mUdHw2BcioX708d4mmoSSWhm4o4HTTg==}
     engines: {node: '>=18.18.0'}
 
   '@stylistic/eslint-plugin@5.10.0':
