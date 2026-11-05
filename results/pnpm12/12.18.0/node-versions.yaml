@@ -1,0 +1,9 @@
+- cleanInstall: 1802.07
+  warmStoreInstall: 184.73
+  runInProject: 8.47
+- cleanInstall: 1907.35
+  warmStoreInstall: 132.92
+  runInProject: 10.4
+- cleanInstall: 1687.26
+  warmStoreInstall: 147.08
+  runInProject: 8.64
