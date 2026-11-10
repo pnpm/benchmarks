@@ -47,7 +47,7 @@
   },
   "scenarios": {
     "S01_add_non_adjacent_deps": {
-      "description": "Add two non-adjacent direct deps (abbrev & wrappy)",
+      "description": "Add two non-adjacent direct dependencies (abbrev & wrappy)",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -87,7 +87,7 @@
       }
     },
     "S02_add_adjacent_deps_middle": {
-      "description": "Add two alphabetically adjacent direct deps (fast-copy & fast-redact)",
+      "description": "Add two alphabetically adjacent direct dependencies (fast-copy & fast-redact)",
       "managers": {
         "pnpm_v13": {
           "conflicts": 2,
@@ -127,7 +127,7 @@
       }
     },
     "S03_add_deps_at_end": {
-      "description": "Add two direct deps at the end of dependencies (once & wrappy)",
+      "description": "Add two direct dependencies at the end of dependencies (once & wrappy)",
       "managers": {
         "pnpm_v13": {
           "conflicts": 2,
@@ -167,7 +167,7 @@
       }
     },
     "S04_bump_non_adjacent_deps": {
-      "description": "Bump two non-adjacent direct deps (abbrev & safe-stable-stringify)",
+      "description": "Bump two non-adjacent direct dependencies (abbrev & safe-stable-stringify)",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -207,7 +207,7 @@
       }
     },
     "S05_bump_adjacent_deps_exact": {
-      "description": "Bump two adjacent exact direct deps (fast-copy & fast-redact)",
+      "description": "Bump two adjacent exact direct dependencies (fast-copy & fast-redact)",
       "managers": {
         "pnpm_v13": {
           "conflicts": 1,
@@ -247,7 +247,7 @@
       }
     },
     "S06_bump_adjacent_deps_ranged": {
-      "description": "Bump two adjacent ranged direct deps (^3.0.0->^3.1.0, ^3.4.0->^3.5.0)",
+      "description": "Bump two adjacent ranged direct dependencies (~3.0.0->^3.1.0, ~3.4.0->^3.5.0)",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -287,7 +287,7 @@
       }
     },
     "S07_remove_and_bump_adjacent_pkg": {
-      "description": "Branch A removes fast-copy, Branch B bumps adjacent fast-redact",
+      "description": "Branch A removes fast-copy; Branch B bumps adjacent fast-redact",
       "managers": {
         "pnpm_v13": {
           "conflicts": 2,
@@ -367,7 +367,7 @@
       }
     },
     "S09_peer_provider_bump_and_new_consumer": {
-      "description": "Branch A bumps peer provider (react 18.2.0->18.3.1); Branch B adds a new peer consumer (react-is/use-sync-external-store)",
+      "description": "Branch A bumps peer provider (react 18.2.0->18.3.1); Branch B adds a peer consumer in another project",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -447,7 +447,7 @@
       }
     },
     "S11_multi_peer_set_intro_vs_provider_bump": {
-      "description": "Branch A bumps react 18.2.0->18.3.1 in ws/a; Branch B adds second peer set (react 17.0.2 + use-sync-external-store) in ws/b",
+      "description": "Branch A bumps react 18.2.0->18.3.1 in ws/a; Branch B introduces a second peer set (react 17.0.2) in ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 2,
@@ -487,7 +487,7 @@
       }
     },
     "S12_workspace_independent_projects": {
-      "description": "Branch A modifies packages/a; Branch B modifies packages/b",
+      "description": "Branch A adds a dependency in packages/a; Branch B adds a dependency in packages/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -567,7 +567,7 @@
       }
     },
     "S14_workspace_hoisting_shift": {
-      "description": "Branch A adds ajv@8.17.1 to ws/a; Branch B bumps root ajv 8.12.0->8.17.1 (causes hoisting shift in npm/bun)",
+      "description": "Branch A adds ajv@8.17.1 to ws/a; Branch B bumps root ajv 8.12.0->8.17.1",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -607,7 +607,7 @@
       }
     },
     "S15_bump_two_multi_dep_packages": {
-      "description": "Branch A bumps pino 8.19.0->9.0.0 in ws/a; Branch B bumps readable-stream 4.4.0->4.8.0 in ws/b",
+      "description": "Branch A bumps pino 8.19.0->9.0.0 in ws/a; Branch B bumps readable-stream 4.5.2->4.8.0 in ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -647,7 +647,7 @@
       }
     },
     "S16_peer_provider_bump_and_distant_new_consumer": {
-      "description": "Branch A bumps react 18.2.0->18.3.1; Branch B adds swr@2.2.5 (peer consumer of react) in same project",
+      "description": "Branch A bumps react 18.2.0->18.3.1; Branch B adds swr@2.2.5 (peer consumer of react) in the same project",
       "managers": {
         "pnpm_v13": {
           "conflicts": 1,
@@ -727,7 +727,7 @@
       }
     },
     "S18_bump_pkg_and_add_pkg_after_it": {
-      "description": "Branch A bumps fast-copy 3.0.0->3.1.0 (in ws/a); Branch B adds fast-redact 3.5.0 right after fast-copy (in ws/b)",
+      "description": "Branch A bumps fast-copy 3.0.0->3.1.0 in ws/a; Branch B adds fast-redact 3.5.0 right after fast-copy in ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -767,7 +767,7 @@
       }
     },
     "S19_add_pkg_before_and_bump_pkg_after_across_ws": {
-      "description": "Branch A adds fast-copy 3.1.0 (in ws/a); Branch B bumps fast-redact 3.4.0->3.5.0 (in ws/b) — isolates packages/nodes section from projects",
+      "description": "Branch A adds fast-copy 3.1.0 in ws/a; Branch B bumps fast-redact 3.4.0->3.5.0 in ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 1,
@@ -807,7 +807,7 @@
       }
     },
     "S20_remove_two_adjacent_pkgs_across_ws": {
-      "description": "Branch A removes fast-copy (from ws/a); Branch B removes fast-redact (from ws/b) — adjacent in packages/nodes",
+      "description": "Branch A removes fast-copy from ws/a; Branch B removes fast-redact from ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 1,
@@ -847,7 +847,7 @@
       }
     },
     "S21_bump_two_adjacent_pkgs_across_ws": {
-      "description": "Branch A bumps fast-copy 3.0.0->3.1.0 (in ws/a); Branch B bumps fast-redact 3.4.0->3.5.0 (in ws/b) — adjacent in packages/nodes",
+      "description": "Branch A bumps fast-copy 3.0.0->3.1.0 in ws/a; Branch B bumps fast-redact 3.4.0->3.5.0 in ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -887,7 +887,7 @@
       }
     },
     "S22_bump_two_adjacent_transitive_deps": {
-      "description": "readable-stream@4.8.0 has adjacent deps buffer & events; Branch A updates buffer 6.0.2->6.0.3, Branch B updates events 3.2.0->3.3.0",
+      "description": "readable-stream@4.8.0 has adjacent dependencies buffer & events; Branch A updates buffer 6.0.2->6.0.3, Branch B updates events 3.2.0->3.3.0",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -927,7 +927,7 @@
       }
     },
     "S23_bump_two_non_adjacent_transitive_deps": {
-      "description": "readable-stream@4.8.0 has non-adjacent deps abort-controller & string_decoder; Branch A updates buffer 6.0.2->6.0.3, Branch B updates string_decoder 1.2.0->1.3.0",
+      "description": "readable-stream@4.8.0 has non-adjacent dependencies buffer & string_decoder; Branch A updates buffer 6.0.2->6.0.3, Branch B updates string_decoder 1.2.0->1.3.0",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,
@@ -967,7 +967,7 @@
       }
     },
     "S24_optional_peer_bound_vs_consumer_added": {
-      "description": "debug@4.4.3 has optional peer supports-color; Branch A adds supports-color@8.1.1 in ws/a; Branch B adds debug@4.4.3 to ws/b",
+      "description": "debug@4.4.3 has optional peer supports-color; Branch A adds supports-color@8.1.1 in ws/a; Branch B adds debug@4.4.3 in ws/b",
       "managers": {
         "pnpm_v13": {
           "conflicts": 0,

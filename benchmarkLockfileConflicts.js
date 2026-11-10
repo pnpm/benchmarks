@@ -120,6 +120,9 @@ export function gitMergeLockfiles (baseText, branchAText, branchBText) {
     fs.writeFileSync(bFile, branchBText)
     const result = spawn.sync('git', ['merge-file', '-p', aFile, baseFile, bFile], { encoding: 'utf8' })
     if (result.error) throw result.error
+    if (result.status == null || result.status < 0 || result.status > 127) {
+      throw new Error(`git merge-file failed with status ${result.status}: ${result.stderr ?? ''}`)
+    }
     const merged = result.stdout ?? ''
     const conflicts = countConflictHunks(merged)
     return { conflicts, merged }
