@@ -107,7 +107,7 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
   fs.writeFileSync(configPath, [
     `storage: ${path.join(dir, 'storage')}`,
     'auth:',
-    '  htpasswd:',
+    '  users:',
     `    file: ${path.join(dir, 'htpasswd')}`,
     // The benchmark registers its own resolver user on startup.
     '    maxUsers: 1',
