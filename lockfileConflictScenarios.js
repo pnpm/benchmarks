@@ -1,4 +1,4 @@
-// Twenty-five 3-way Git merge scenarios covering concurrent dependency and
+// Twenty-nine 3-way Git merge scenarios covering concurrent dependency and
 // workspace changes across package managers and lockfile versions.
 export const lockfileConflictScenarios = [
   {
@@ -307,79 +307,82 @@ export const lockfileConflictScenarios = [
   {
     id: 'S24_optional_peer_bound_vs_consumer_added',
     description: 'debug@4.4.3 has optional peer supports-color; Branch A adds supports-color@8.1.1 in ws/a; Branch B adds debug@4.4.3 in ws/b',
-    base: {
-      workspaces: {
-        a: { dependencies: { debug: '4.4.3', ini: '5.0.0' } },
-        b: { dependencies: { abbrev: '3.0.1' } },
-      },
-    },
-    branchA: {
-      workspaces: {
-        a: { dependencies: { debug: '4.4.3', ini: '5.0.0', 'supports-color': '8.1.1' } },
-        b: { dependencies: { abbrev: '3.0.1' } },
-      },
-    },
-    branchB: {
-      workspaces: {
-        a: { dependencies: { debug: '4.4.3', ini: '5.0.0' } },
-        b: { dependencies: { abbrev: '3.0.1', debug: '4.4.3' } },
-      },
-    },
-    merged: {
-      workspaces: {
-        a: { dependencies: { debug: '4.4.3', ini: '5.0.0', 'supports-color': '8.1.1' } },
-        b: { dependencies: { abbrev: '3.0.1', debug: '4.4.3' } },
-      },
-    },
+    base: { workspaces: { a: { dependencies: { debug: '4.4.3', ini: '5.0.0' } }, b: { dependencies: { abbrev: '3.0.1' } } } },
+    branchA: { workspaces: { a: { dependencies: { debug: '4.4.3', ini: '5.0.0', 'supports-color': '8.1.1' } }, b: { dependencies: { abbrev: '3.0.1' } } } },
+    branchB: { workspaces: { a: { dependencies: { debug: '4.4.3', ini: '5.0.0' } }, b: { dependencies: { abbrev: '3.0.1', debug: '4.4.3' } } } },
+    merged: { workspaces: { a: { dependencies: { debug: '4.4.3', ini: '5.0.0', 'supports-color': '8.1.1' } }, b: { dependencies: { abbrev: '3.0.1', debug: '4.4.3' } } } },
   },
   {
     id: 'S25_add_new_workspace_project_vs_bump_in_another',
     description: 'Branch A adds a new workspace project packages/b; Branch B bumps a dependency in packages/c',
-    base: {
-      workspaces: {
-        a: { dependencies: { abbrev: '3.0.1' } },
-        c: { dependencies: { 'fast-redact': '3.4.0' } },
-      },
-    },
-    branchA: {
-      workspaces: {
-        a: { dependencies: { abbrev: '3.0.1' } },
-        b: { dependencies: { ini: '5.0.0' } },
-        c: { dependencies: { 'fast-redact': '3.4.0' } },
-      },
-    },
-    branchB: {
-      workspaces: {
-        a: { dependencies: { abbrev: '3.0.1' } },
-        c: { dependencies: { 'fast-redact': '3.5.0' } },
-      },
-    },
-    merged: {
-      workspaces: {
-        a: { dependencies: { abbrev: '3.0.1' } },
-        b: { dependencies: { ini: '5.0.0' } },
-        c: { dependencies: { 'fast-redact': '3.5.0' } },
-      },
-    },
+    base: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, c: { dependencies: { 'fast-redact': '3.4.0' } } } },
+    branchA: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, b: { dependencies: { ini: '5.0.0' } }, c: { dependencies: { 'fast-redact': '3.4.0' } } } },
+    branchB: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, c: { dependencies: { 'fast-redact': '3.5.0' } } } },
+    merged: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, b: { dependencies: { ini: '5.0.0' } }, c: { dependencies: { 'fast-redact': '3.5.0' } } } },
   },
   {
     id: 'S26_bump_last_pkg_vs_append_new_pkg',
     description: 'Branch A bumps ini (1.3.8 -> 5.0.0) in dependencies; Branch B adds ms in devDependencies',
+    base: { dependencies: { abbrev: '3.0.1', ini: '1.3.8' }, devDependencies: { 'fast-redact': '3.5.0' } },
+    branchA: { dependencies: { abbrev: '3.0.1', ini: '5.0.0' }, devDependencies: { 'fast-redact': '3.5.0' } },
+    branchB: { dependencies: { abbrev: '3.0.1', ini: '1.3.8' }, devDependencies: { 'fast-redact': '3.5.0', ms: '2.1.3' } },
+    merged: { dependencies: { abbrev: '3.0.1', ini: '5.0.0' }, devDependencies: { 'fast-redact': '3.5.0', ms: '2.1.3' } },
+  },
+  {
+    id: 'S27_workspace_prod_deps_bump_vs_dev_deps_bump',
+    description: 'Branch A bumps dependencies in packages/a and packages/b; Branch B bumps devDependencies in packages/a and packages/b',
     base: {
-      dependencies: { abbrev: '3.0.1', ini: '1.3.8' },
-      devDependencies: { 'fast-redact': '3.5.0' },
+      workspaces: {
+        a: { dependencies: { abbrev: '2.0.0' }, devDependencies: { 'fast-redact': '3.4.0' } },
+        b: { dependencies: { ini: '4.1.2' }, devDependencies: { semver: '7.6.3' } },
+      },
     },
     branchA: {
-      dependencies: { abbrev: '3.0.1', ini: '5.0.0' },
-      devDependencies: { 'fast-redact': '3.5.0' },
+      workspaces: {
+        a: { dependencies: { abbrev: '3.0.1' }, devDependencies: { 'fast-redact': '3.4.0' } },
+        b: { dependencies: { ini: '5.0.0' }, devDependencies: { semver: '7.6.3' } },
+      },
     },
     branchB: {
-      dependencies: { abbrev: '3.0.1', ini: '1.3.8' },
-      devDependencies: { 'fast-redact': '3.5.0', ms: '2.1.3' },
+      workspaces: {
+        a: { dependencies: { abbrev: '2.0.0' }, devDependencies: { 'fast-redact': '3.5.0' } },
+        b: { dependencies: { ini: '4.1.2' }, devDependencies: { semver: '7.7.4' } },
+      },
     },
     merged: {
-      dependencies: { abbrev: '3.0.1', ini: '5.0.0' },
-      devDependencies: { 'fast-redact': '3.5.0', ms: '2.1.3' },
+      workspaces: {
+        a: { dependencies: { abbrev: '3.0.1' }, devDependencies: { 'fast-redact': '3.5.0' } },
+        b: { dependencies: { ini: '5.0.0' }, devDependencies: { semver: '7.7.4' } },
+      },
+    },
+  },
+  {
+    id: 'S28_add_two_non_adjacent_workspace_projects',
+    description: 'Branch A adds workspace project packages/b; Branch B adds workspace project packages/d (separated by packages/c)',
+    base: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, c: { dependencies: { 'fast-redact': '3.5.0' } } } },
+    branchA: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, b: { dependencies: { 'fast-copy': '3.0.0' } }, c: { dependencies: { 'fast-redact': '3.5.0' } } } },
+    branchB: { workspaces: { a: { dependencies: { abbrev: '3.0.1' } }, c: { dependencies: { 'fast-redact': '3.5.0' } }, d: { dependencies: { 'safe-stable-stringify': '2.5.0' } } } },
+    merged: {
+      workspaces: {
+        a: { dependencies: { abbrev: '3.0.1' } },
+        b: { dependencies: { 'fast-copy': '3.0.0' } },
+        c: { dependencies: { 'fast-redact': '3.5.0' } },
+        d: { dependencies: { 'safe-stable-stringify': '2.5.0' } },
+      },
+    },
+  },
+  {
+    id: 'S29_add_two_adjacent_workspace_projects',
+    description: 'Branch A adds workspace project packages/b; Branch B adds workspace project packages/c',
+    base: { workspaces: { a: { dependencies: { abbrev: '3.0.1', 'fast-redact': '3.5.0' } } } },
+    branchA: { workspaces: { a: { dependencies: { abbrev: '3.0.1', 'fast-redact': '3.5.0' } }, b: { dependencies: { 'fast-copy': '3.0.0' } } } },
+    branchB: { workspaces: { a: { dependencies: { abbrev: '3.0.1', 'fast-redact': '3.5.0' } }, c: { dependencies: { 'safe-stable-stringify': '2.5.0' } } } },
+    merged: {
+      workspaces: {
+        a: { dependencies: { abbrev: '3.0.1', 'fast-redact': '3.5.0' } },
+        b: { dependencies: { 'fast-copy': '3.0.0' } },
+        c: { dependencies: { 'safe-stable-stringify': '2.5.0' } },
+      },
     },
   },
 ]

@@ -1,92 +1,92 @@
 {
   "measuredAt": "2026-11-10T12:20:00.789Z",
-  "totalScenarios": 26,
-  "cleanPackageJsonScenarios": 17,
+  "totalScenarios": 29,
+  "cleanPackageJsonScenarios": 20,
   "summary": {
     "pnpm_v13": {
-      "clean": 13,
-      "conflicted": 11,
-      "conflictHunks": 16,
+      "clean": 15,
+      "conflicted": 12,
+      "conflictHunks": 17,
       "semanticDrift": 2
     },
     "pnpm_v9": {
-      "clean": 11,
-      "conflicted": 12,
-      "conflictHunks": 24,
+      "clean": 13,
+      "conflicted": 13,
+      "conflictHunks": 25,
       "semanticDrift": 3
     },
     "npm": {
-      "clean": 11,
-      "conflicted": 13,
-      "conflictHunks": 16,
+      "clean": 13,
+      "conflicted": 14,
+      "conflictHunks": 18,
       "semanticDrift": 2
     },
     "yarn": {
-      "clean": 11,
-      "conflicted": 14,
-      "conflictHunks": 19,
+      "clean": 12,
+      "conflicted": 16,
+      "conflictHunks": 22,
       "semanticDrift": 1
     },
     "yarn_classic": {
-      "clean": 15,
+      "clean": 18,
       "conflicted": 11,
       "conflictHunks": 13,
       "semanticDrift": 0
     },
     "bun": {
-      "clean": 10,
-      "conflicted": 15,
-      "conflictHunks": 19,
+      "clean": 12,
+      "conflicted": 16,
+      "conflictHunks": 21,
       "semanticDrift": 1
     },
     "vlt": {
       "clean": 4,
-      "conflicted": 21,
-      "conflictHunks": 36,
+      "conflicted": 24,
+      "conflictHunks": 40,
       "semanticDrift": 1
     }
   },
   "cleanPackageJsonSummary": {
     "pnpm_v13": {
-      "clean": 12,
-      "conflicted": 3,
-      "conflictHunks": 4,
+      "clean": 14,
+      "conflicted": 4,
+      "conflictHunks": 5,
       "semanticDrift": 2
     },
     "pnpm_v9": {
-      "clean": 9,
-      "conflicted": 5,
-      "conflictHunks": 8,
+      "clean": 11,
+      "conflicted": 6,
+      "conflictHunks": 9,
       "semanticDrift": 3
     },
     "npm": {
-      "clean": 11,
-      "conflicted": 4,
-      "conflictHunks": 4,
+      "clean": 13,
+      "conflicted": 5,
+      "conflictHunks": 6,
       "semanticDrift": 2
     },
     "yarn": {
-      "clean": 11,
-      "conflicted": 5,
-      "conflictHunks": 5,
+      "clean": 12,
+      "conflicted": 7,
+      "conflictHunks": 8,
       "semanticDrift": 1
     },
     "yarn_classic": {
-      "clean": 11,
+      "clean": 14,
       "conflicted": 6,
       "conflictHunks": 6,
       "semanticDrift": 0
     },
     "bun": {
-      "clean": 10,
-      "conflicted": 6,
-      "conflictHunks": 6,
+      "clean": 12,
+      "conflicted": 7,
+      "conflictHunks": 8,
       "semanticDrift": 1
     },
     "vlt": {
       "clean": 4,
-      "conflicted": 12,
-      "conflictHunks": 19,
+      "conflicted": 15,
+      "conflictHunks": 23,
       "semanticDrift": 1
     }
   },
@@ -1152,6 +1152,129 @@
         },
         "vlt": {
           "conflicts": 1,
+          "exactMatch": false,
+          "semanticDrift": false
+        }
+      }
+    },
+    "S27_workspace_prod_deps_bump_vs_dev_deps_bump": {
+      "description": "Branch A bumps dependencies in packages/a and packages/b; Branch B bumps devDependencies in packages/a and packages/b",
+      "packageJsonConflicts": 0,
+      "managers": {
+        "pnpm_v13": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "pnpm_v9": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "npm": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "yarn": {
+          "conflicts": 2,
+          "exactMatch": false,
+          "semanticDrift": false
+        },
+        "yarn_classic": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "bun": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "vlt": {
+          "conflicts": 1,
+          "exactMatch": false,
+          "semanticDrift": false
+        }
+      }
+    },
+    "S28_add_two_non_adjacent_workspace_projects": {
+      "description": "Branch A adds workspace project packages/b; Branch B adds workspace project packages/d (separated by packages/c)",
+      "packageJsonConflicts": 0,
+      "managers": {
+        "pnpm_v13": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "pnpm_v9": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "npm": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "yarn": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "yarn_classic": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "bun": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "vlt": {
+          "conflicts": 1,
+          "exactMatch": false,
+          "semanticDrift": false
+        }
+      }
+    },
+    "S29_add_two_adjacent_workspace_projects": {
+      "description": "Branch A adds workspace project packages/b; Branch B adds workspace project packages/c",
+      "packageJsonConflicts": 0,
+      "managers": {
+        "pnpm_v13": {
+          "conflicts": 1,
+          "exactMatch": false,
+          "semanticDrift": false
+        },
+        "pnpm_v9": {
+          "conflicts": 1,
+          "exactMatch": false,
+          "semanticDrift": false
+        },
+        "npm": {
+          "conflicts": 2,
+          "exactMatch": false,
+          "semanticDrift": false
+        },
+        "yarn": {
+          "conflicts": 1,
+          "exactMatch": false,
+          "semanticDrift": false
+        },
+        "yarn_classic": {
+          "conflicts": 0,
+          "exactMatch": true,
+          "semanticDrift": false
+        },
+        "bun": {
+          "conflicts": 2,
+          "exactMatch": false,
+          "semanticDrift": false
+        },
+        "vlt": {
+          "conflicts": 2,
           "exactMatch": false,
           "semanticDrift": false
         }
