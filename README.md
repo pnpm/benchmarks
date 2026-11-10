@@ -56,3 +56,11 @@ That section times commands inside the shell with `$EPOCHREALTIME`, so it needs 
 ```
 brew install bash
 ```
+
+## Lockfile Git merge conflicts
+
+`benchmarkLockfileConflicts.js` measures 3-way `git merge-file` conflicts and semantic drift across 25 concurrent-branch scenarios (`lockfileConflictScenarios.js`) for `pnpm-lock.yaml` (`13.0` and `9.0`), `package-lock.json` (npm v3), `yarn.lock` (Berry and Classic v1), `bun.lock`, and `vlt-lock.json`, and writes the results to [lockfile-conflicts.json](./lockfile-conflicts.json):
+
+```
+pnpm run benchmark:conflicts
+```
