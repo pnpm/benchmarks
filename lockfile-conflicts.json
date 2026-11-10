@@ -28,10 +28,10 @@
       "semanticDrift": 1
     },
     "yarn_classic": {
-      "clean": 18,
+      "clean": 17,
       "conflicted": 11,
       "conflictHunks": 13,
-      "semanticDrift": 0
+      "semanticDrift": 1
     },
     "bun": {
       "clean": 12,
@@ -72,10 +72,10 @@
       "semanticDrift": 1
     },
     "yarn_classic": {
-      "clean": 14,
+      "clean": 13,
       "conflicted": 6,
       "conflictHunks": 6,
-      "semanticDrift": 0
+      "semanticDrift": 1
     },
     "bun": {
       "clean": 12,
@@ -445,8 +445,8 @@
         },
         "yarn_classic": {
           "conflicts": 0,
-          "exactMatch": true,
-          "semanticDrift": false
+          "exactMatch": false,
+          "semanticDrift": true
         },
         "bun": {
           "conflicts": 0,

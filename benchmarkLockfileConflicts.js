@@ -21,6 +21,9 @@ export const CONFLICT_MANAGERS = [
   'vlt',
 ]
 
+/**
+ * Builds the root `package.json` manifest object for a scenario state.
+ */
 function rootManifest (state) {
   return {
     name: 'root',
@@ -32,6 +35,9 @@ function rootManifest (state) {
   }
 }
 
+/**
+ * Serializes all `package.json` manifests (root and workspaces) for a state.
+ */
 function stateManifestFiles (state) {
   const files = {
     'package.json': `${JSON.stringify(rootManifest(state), null, 2)}\n`,
@@ -43,6 +49,9 @@ function stateManifestFiles (state) {
   return files
 }
 
+/**
+ * Counts 3-way `git merge-file` conflict hunks across all `package.json` files in a scenario.
+ */
 export function countPackageJsonConflicts (scenario) {
   const baseFiles = stateManifestFiles(scenario.base)
   const aFiles = stateManifestFiles(scenario.branchA)
@@ -64,10 +73,33 @@ export function countPackageJsonConflicts (scenario) {
   return conflicts
 }
 
+/**
+ * Removes workspace directories under `packages/` that are not present in `workspaces`.
+ */
+function pruneStaleWorkspaceDirs (dir, workspaces) {
+  const packagesDir = path.join(dir, 'packages')
+  if (!fs.existsSync(packagesDir)) return
+  if (!workspaces) {
+    fs.rmSync(packagesDir, { recursive: true, force: true })
+    return
+  }
+  const activeNames = new Set(Object.keys(workspaces))
+  for (const entry of fs.readdirSync(packagesDir)) {
+    if (!activeNames.has(entry)) {
+      fs.rmSync(path.join(packagesDir, entry), { recursive: true, force: true })
+    }
+  }
+}
+
+/**
+ * Writes root and workspace `package.json` manifests for `state` into `dir`.
+ */
 export function writeProjectState (dir, state, { clean = true } = {}) {
   if (clean) {
     fs.rmSync(dir, { recursive: true, force: true })
     fs.mkdirSync(dir, { recursive: true })
+  } else {
+    pruneStaleWorkspaceDirs(dir, state.workspaces)
   }
   fs.writeFileSync(path.join(dir, 'package.json'), `${JSON.stringify(rootManifest(state), null, 2)}\n`)
   if (!state.workspaces) return
@@ -79,14 +111,23 @@ export function writeProjectState (dir, state, { clean = true } = {}) {
   }
 }
 
+/**
+ * Writes `pnpm-workspace.yaml` with workspace globs and optional `lockfile.format: v13`.
+ */
 function writePnpmWorkspaceYaml (dir, state, isV13) {
   const lines = state.workspaces ? ['packages:', '  - packages/*'] : []
   if (isV13) lines.push('lockfile:', '  format: v13')
+  const wsYamlPath = path.join(dir, 'pnpm-workspace.yaml')
   if (lines.length > 0) {
-    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), `${lines.join('\n')}\n`)
+    fs.writeFileSync(wsYamlPath, `${lines.join('\n')}\n`)
+  } else {
+    fs.rmSync(wsYamlPath, { force: true })
   }
 }
 
+/**
+ * Executes a package manager command synchronously and throws on non-zero exit status.
+ */
 function runCommand (command, args, opts) {
   const result = spawn.sync(command, args, { stdio: 'pipe', ...opts })
   if (result.error) throw result.error
@@ -96,10 +137,28 @@ function runCommand (command, args, opts) {
   }
 }
 
+/**
+ * Runs `pnpm` in lockfile-only mode and validates the resulting lockfile version header.
+ */
+function invokePnpm (manager, dir, binaries) {
+  const pnpmBin = binaries.pnpm ?? process.env.PNPM_BIN ?? 'pnpm'
+  runCommand(pnpmBin, ['install', '--lockfile-only', '--ignore-scripts'], { cwd: dir })
+  const lockfile = fs.readFileSync(path.join(dir, 'pnpm-lock.yaml'), 'utf8')
+  if (manager === 'pnpm_v13' && !lockfile.includes('"lockfileVersion": "13.0"')) {
+    throw new Error('Expected pnpm_v13 to emit lockfileVersion 13.0 (set PNPM_BIN to a v13-capable pnpm binary)')
+  }
+  if (manager === 'pnpm_v9' && !lockfile.includes("lockfileVersion: '9.0'")) {
+    throw new Error('Expected pnpm_v9 to emit lockfileVersion 9.0')
+  }
+  return lockfile
+}
+
+/**
+ * Invokes the specified package manager to generate and return its lockfile text.
+ */
 function invokeManager (manager, dir, binaries) {
   if (manager === 'pnpm_v13' || manager === 'pnpm_v9') {
-    runCommand(binaries.pnpm ?? 'pnpm', ['install', '--lockfile-only', '--ignore-scripts'], { cwd: dir })
-    return fs.readFileSync(path.join(dir, 'pnpm-lock.yaml'), 'utf8')
+    return invokePnpm(manager, dir, binaries)
   }
   if (manager === 'npm') {
     runCommand(binaries.npm ?? 'npm', ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: dir })
@@ -128,6 +187,9 @@ function invokeManager (manager, dir, binaries) {
   throw new Error(`Unknown package manager: ${manager}`)
 }
 
+/**
+ * Generates a lockfile for `state` (applying `state.seed` first when present).
+ */
 export function generateLockfileForState (manager, state, workDir, binaries = {}) {
   if (state.seed) {
     generateLockfileForState(manager, state.seed, workDir, binaries)
@@ -141,6 +203,9 @@ export function generateLockfileForState (manager, state, workDir, binaries = {}
   return invokeManager(manager, workDir, binaries)
 }
 
+/**
+ * Runs 3-way `git merge-file` on `baseText`, `branchAText`, and `branchBText`.
+ */
 export function gitMergeLockfiles (baseText, branchAText, branchBText) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'lockfile-merge-'))
   try {
@@ -163,6 +228,9 @@ export function gitMergeLockfiles (baseText, branchAText, branchBText) {
   }
 }
 
+/**
+ * Counts `<<<<<<<` conflict markers in merged file output.
+ */
 export function countConflictHunks (text) {
   let count = 0
   for (const line of text.split('\n')) {
@@ -171,6 +239,9 @@ export function countConflictHunks (text) {
   return count
 }
 
+/**
+ * Evaluates 3-way merge conflict count, exact match, and semantic drift against `expectedMerged`.
+ */
 export function evaluateScenarioOutcome ({ base, branchA, branchB, expectedMerged }) {
   const { conflicts, merged } = gitMergeLockfiles(base, branchA, branchB)
   const exactMatch = conflicts === 0 && merged === expectedMerged
@@ -178,6 +249,9 @@ export function evaluateScenarioOutcome ({ base, branchA, branchB, expectedMerge
   return { conflicts, exactMatch, semanticDrift }
 }
 
+/**
+ * Aggregates clean, conflicted, conflict hunk, and semantic drift counts for a single manager.
+ */
 function summarizeManagerOutcomes (scenarios, manager) {
   let clean = 0
   let conflicted = 0
@@ -198,6 +272,9 @@ function summarizeManagerOutcomes (scenarios, manager) {
   return { clean, conflicted, conflictHunks, semanticDrift }
 }
 
+/**
+ * Summarizes merge conflict and drift totals across all scenarios for each manager.
+ */
 export function summarizeConflictResults (scenarios, managers = CONFLICT_MANAGERS) {
   const summary = {}
   for (const manager of managers) {
@@ -206,6 +283,9 @@ export function summarizeConflictResults (scenarios, managers = CONFLICT_MANAGER
   return summary
 }
 
+/**
+ * Summarizes merge conflict and drift totals across scenarios where `package.json` has 0 conflicts.
+ */
 export function summarizeCleanPackageJsonResults (scenarios, managers = CONFLICT_MANAGERS) {
   const cleanScenarios = Object.fromEntries(
     Object.entries(scenarios).filter(([, scenario]) => (scenario.packageJsonConflicts ?? 0) === 0)
@@ -213,6 +293,9 @@ export function summarizeCleanPackageJsonResults (scenarios, managers = CONFLICT
   return summarizeConflictResults(cleanScenarios, managers)
 }
 
+/**
+ * Runs the lockfile merge conflict benchmark suite across all scenarios and managers.
+ */
 export function runLockfileConflictsBenchmark ({
   managers = CONFLICT_MANAGERS,
   binaries = {},

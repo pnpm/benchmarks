@@ -114,10 +114,16 @@ test('writeProjectState writes root and workspace manifests and scenarios are we
   const dir = tempy.directory()
   writeProjectState(dir, {
     dependencies: { abbrev: '3.0.1' },
-    workspaces: { a: { dependencies: { ini: '5.0.0' } } },
+    workspaces: { a: { dependencies: { ini: '5.0.0' } }, stale: { dependencies: { ms: '2.1.3' } } },
   })
   assert.ok(fs.existsSync(path.join(dir, 'package.json')))
   assert.ok(fs.existsSync(path.join(dir, 'packages/a/package.json')))
+  assert.ok(fs.existsSync(path.join(dir, 'packages/stale/package.json')))
+  writeProjectState(dir, {
+    dependencies: { abbrev: '3.0.1' },
+    workspaces: { a: { dependencies: { ini: '5.0.0' } } },
+  }, { clean: false })
+  assert.equal(fs.existsSync(path.join(dir, 'packages/stale')), false)
   assert.equal(lockfileConflictScenarios.length, 29)
   assert.equal(CONFLICT_MANAGERS.includes('pnpm_v13'), true)
   assert.equal(countPackageJsonConflicts(lockfileConflictScenarios[0]), 0)

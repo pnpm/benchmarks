@@ -71,7 +71,7 @@ export const lockfileConflictScenarios = [
     base: { workspaces: { a: { dependencies: { react: '18.2.0', 'use-sync-external-store': '1.2.0' } }, b: { dependencies: { ini: '5.0.0' } } } },
     branchA: { workspaces: { a: { dependencies: { react: '18.3.1', 'use-sync-external-store': '1.2.0' } }, b: { dependencies: { ini: '5.0.0' } } } },
     branchB: { workspaces: { a: { dependencies: { react: '18.2.0', 'use-sync-external-store': '1.2.0' } }, b: { dependencies: { ini: '5.0.0', react: '18.2.0', 'use-sync-external-store': '1.2.0' } } } },
-    merged: { workspaces: { a: { dependencies: { react: '18.3.1', 'use-sync-external-store': '1.2.0' } }, b: { dependencies: { ini: '5.0.0', react: '18.3.1', 'use-sync-external-store': '1.2.0' } } } },
+    merged: { workspaces: { a: { dependencies: { react: '18.3.1', 'use-sync-external-store': '1.2.0' } }, b: { dependencies: { ini: '5.0.0', react: '18.2.0', 'use-sync-external-store': '1.2.0' } } } },
   },
   {
     id: 'S10_peer_provider_bump_and_consumer_bump',
