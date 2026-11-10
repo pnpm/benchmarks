@@ -32,6 +32,38 @@ function rootManifest (state) {
   }
 }
 
+function stateManifestFiles (state) {
+  const files = {
+    'package.json': `${JSON.stringify(rootManifest(state), null, 2)}\n`,
+  }
+  for (const [wsName, wsPkg] of Object.entries(state.workspaces ?? {})) {
+    const manifest = { name: `@ws/${wsName}`, version: '1.0.0', ...wsPkg }
+    files[`packages/${wsName}/package.json`] = `${JSON.stringify(manifest, null, 2)}\n`
+  }
+  return files
+}
+
+export function countPackageJsonConflicts (scenario) {
+  const baseFiles = stateManifestFiles(scenario.base)
+  const aFiles = stateManifestFiles(scenario.branchA)
+  const bFiles = stateManifestFiles(scenario.branchB)
+  const allPaths = new Set([
+    ...Object.keys(baseFiles),
+    ...Object.keys(aFiles),
+    ...Object.keys(bFiles),
+  ])
+  let conflicts = 0
+  for (const filePath of allPaths) {
+    const merged = gitMergeLockfiles(
+      baseFiles[filePath] ?? '',
+      aFiles[filePath] ?? '',
+      bFiles[filePath] ?? ''
+    )
+    conflicts += merged.conflicts
+  }
+  return conflicts
+}
+
 export function writeProjectState (dir, state, { clean = true } = {}) {
   if (clean) {
     fs.rmSync(dir, { recursive: true, force: true })
@@ -174,6 +206,13 @@ export function summarizeConflictResults (scenarios, managers = CONFLICT_MANAGER
   return summary
 }
 
+export function summarizeCleanPackageJsonResults (scenarios, managers = CONFLICT_MANAGERS) {
+  const cleanScenarios = Object.fromEntries(
+    Object.entries(scenarios).filter(([, scenario]) => (scenario.packageJsonConflicts ?? 0) === 0)
+  )
+  return summarizeConflictResults(cleanScenarios, managers)
+}
+
 export function runLockfileConflictsBenchmark ({
   managers = CONFLICT_MANAGERS,
   binaries = {},
@@ -183,7 +222,11 @@ export function runLockfileConflictsBenchmark ({
   const scenarios = {}
   try {
     for (const scenario of lockfileConflictScenarios) {
-      scenarios[scenario.id] = { description: scenario.description, managers: {} }
+      scenarios[scenario.id] = {
+        description: scenario.description,
+        packageJsonConflicts: countPackageJsonConflicts(scenario),
+        managers: {},
+      }
       for (const manager of managers) {
         const base = generateLockfileForState(manager, scenario.base, workDir, binaries)
         const branchA = generateLockfileForState(manager, scenario.branchA, workDir, binaries)
@@ -200,10 +243,15 @@ export function runLockfileConflictsBenchmark ({
   } finally {
     fs.rmSync(workDir, { recursive: true, force: true })
   }
+  const cleanPackageJsonScenarios = Object.values(scenarios).filter(
+    (scenario) => scenario.packageJsonConflicts === 0
+  ).length
   const report = {
     measuredAt: new Date().toISOString(),
     totalScenarios: lockfileConflictScenarios.length,
+    cleanPackageJsonScenarios,
     summary: summarizeConflictResults(scenarios, managers),
+    cleanPackageJsonSummary: summarizeCleanPackageJsonResults(scenarios, managers),
     scenarios,
   }
   if (outputPath) {
