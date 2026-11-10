@@ -362,4 +362,24 @@ export const lockfileConflictScenarios = [
       },
     },
   },
+  {
+    id: 'S26_bump_last_pkg_vs_append_new_pkg',
+    description: 'Branch A bumps ini (1.3.8 -> 5.0.0) in dependencies; Branch B adds ms in devDependencies',
+    base: {
+      dependencies: { abbrev: '3.0.1', ini: '1.3.8' },
+      devDependencies: { 'fast-redact': '3.5.0' },
+    },
+    branchA: {
+      dependencies: { abbrev: '3.0.1', ini: '5.0.0' },
+      devDependencies: { 'fast-redact': '3.5.0' },
+    },
+    branchB: {
+      dependencies: { abbrev: '3.0.1', ini: '1.3.8' },
+      devDependencies: { 'fast-redact': '3.5.0', ms: '2.1.3' },
+    },
+    merged: {
+      dependencies: { abbrev: '3.0.1', ini: '5.0.0' },
+      devDependencies: { 'fast-redact': '3.5.0', ms: '2.1.3' },
+    },
+  },
 ]
