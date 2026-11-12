@@ -159,7 +159,6 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     '  public:',
     `    - registry: ${tarRegistryUrl(`http://127.0.0.1:${port}`)}`,
     'log:',
-    '  type: stdout',
     '  format: pretty',
     `  level: ${logLevel}`,
     '',
