@@ -19,11 +19,11 @@ import { applyPnprServerRegistry, createEnv, pnpmWorkspaceYaml, UPDATED_DEPENDEN
  * health check, and the run carried on against a registry whose tarball URLs
  * pointed at a proxy that had been shut down with the run that created it.
  */
-export function reservePort () {
+export function reservePort (host = '127.0.0.1') {
   return new Promise((resolve, reject) => {
     const probe = net.createServer()
     probe.on('error', reject)
-    probe.listen(0, '127.0.0.1', () => {
+    probe.listen(0, host, () => {
       const { port } = probe.address()
       probe.close(() => resolve(port))
     })
@@ -72,6 +72,21 @@ export function tarRegistryUrl (base) {
   return `${base}/npm/~${TAR_REGISTRY}/`
 }
 
+/**
+ * The loopback address pnpr listens on: a host of its own, apart from the
+ * `127.0.0.1` every client and latency proxy uses.
+ *
+ * The accelerated scenario has the resolver fetch metadata from the server's
+ * own un-proxied address (see `applyPnprServerRegistry`), while the server's
+ * public URL is the latency proxy in front of it. pnpr refuses to let its
+ * resolver reach the public URL's host at any other origin, and a hostname
+ * such as `localhost` is no way around that — the resolver looks it up and
+ * refuses the address. Listening on another host is what keeps the two
+ * apart. Every `127.x.x.x` address is loopback on Linux, which is where the
+ * benchmark runs.
+ */
+export const PNPR_HOST = '127.0.0.2'
+
 export function installPnpr (managersDir) {
   // Like pnpm 12 and Bun, the binary arrives through an install script.
   const result = spawn.sync('pnpm', ['add', '@pnpm/pnpr@next', '--allow-build=@pnpm/pnpr'], {
@@ -105,12 +120,112 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
   fs.mkdirSync(dir, { recursive: true })
   const configPath = path.join(dir, 'pnpr.yaml')
   fs.writeFileSync(configPath, [
+    `listen: ${PNPR_HOST}:${port}`,
+    // pnpr rewrites the tarball URLs it serves to this address. It has to be
+    // the address clients actually use, or every tarball would be fetched on a
+    // link the benchmark isn't emulating — and npm refuses outright to fetch a
+    // tarball from a host other than the registry it was told about. Set here
+    // rather than on the command line because the registries import below
+    // checks its routes against it too.
+    ...(publicUrl ? [`publicUrl: ${publicUrl}`] : []),
+    // Accounts and the registries live in the database, which pnpr keeps
+    // inside the storage directory and binds the storage to. A storage
+    // `populatePnprCache.js` filled therefore arrives with the populate run's
+    // account and registries: the account is signed in to again (see
+    // `mintToken`) and the registries are replaced below.
     `storage: ${path.join(dir, 'storage')}`,
+    // Upstream content is cached under keys derived from this, and pnpr
+    // refuses to reuse a cache directory without one. The benchmark hands
+    // every run the storage `populatePnprCache.js` filled, so it has to be
+    // the same in all of them. Nothing here is secret: the server only ever
+    // listens on loopback.
+    'secret: pnpm-benchmarks-pnpr-cache-secret',
     'auth:',
     '  users:',
-    `    file: ${path.join(dir, 'htpasswd')}`,
     // The benchmark registers its own resolver user on startup.
     '    maxUsers: 1',
+    'resolver:',
+    '  enabled: true',
+    'routes:',
+    // The tar registry the accelerated scenario resolves against is this
+    // server's own, at its un-proxied address (see `applyPnprServerRegistry`),
+    // and the resolver refuses loopback addresses that are not listed here.
+    '  allowedPrivateNetworks: [127.0.0.0/8]',
+    'log:',
+    '  format: pretty',
+    `  level: ${logLevel}`,
+    '',
+  ].join('\n'))
+  const url = `http://${PNPR_HOST}:${port}`
+  importRegistries({ managersDir, dir, configPath, url })
+
+  // pnpr's output goes to a file rather than a pipe. Installs are measured with
+  // a synchronous spawn, so nothing in this process drains a pipe while one is
+  // running: the buffer would fill, pnpr would block writing to it, and the
+  // registry would stop answering midway through a scenario.
+  const logPath = path.join(dir, 'pnpr.log')
+  const logFd = fs.openSync(logPath, 'a')
+  const proc = spawn('pnpr', [
+    '-c', configPath,
+    // Packuments are fetched from npmjs once and then treated as authoritative,
+    // so no scenario pays for a revalidation another scenario already paid for.
+    '--packument-ttl', '365d',
+  ], {
+    cwd: managersDir,
+    env: createEnv(managersDir),
+    stdio: ['ignore', logFd, logFd],
+  })
+  fs.closeSync(logFd)
+  proc.on('error', (err) => {
+    throw err
+  })
+
+  const readLog = () => {
+    try {
+      return fs.readFileSync(logPath, 'utf8')
+    } catch {
+      return ''
+    }
+  }
+
+  let exit = null
+  proc.on('exit', (code, signal) => {
+    exit = { code, signal }
+  })
+
+  await waitForPnpr(url, proc, readLog)
+  return {
+    url,
+    log: readLog,
+    /** A registry that died mid-run makes everything measured after it worthless. */
+    assertAlive: () => {
+      if (!exit) return
+      throw new Error(
+        `pnpr exited (code ${exit.code}, signal ${exit.signal}). Its log:\n${readLog().slice(-4000)}`
+      )
+    },
+    // A registry that outlives its run is what made the second benchmark of a
+    // job fail: it held the port, answered the next run's health check, and
+    // served tarball URLs pointing at a proxy that no longer existed. Make sure
+    // it is gone rather than merely asked to leave.
+    stop: () => {
+      if (exit) return
+      proc.kill()
+      setTimeout(() => {
+        if (!exit) proc.kill('SIGKILL')
+      }, 2_000).unref()
+    },
+  }
+}
+
+/**
+ * pnpr reads its registries only from its database, never from the config
+ * file, so they are stored there before the server starts. An import
+ * replaces whatever an earlier run stored.
+ */
+function importRegistries ({ managersDir, dir, configPath, url }) {
+  const registriesPath = path.join(dir, 'registries.yaml')
+  fs.writeFileSync(registriesPath, [
     'registries:',
     // The public npm registry. No `packages:` map, so it claims every
     // name — the catch-all, and therefore last in the router's sources.
@@ -147,8 +262,6 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     '    sources: [bit, npmjs]',
     '    tarballs: tar',
     'defaultRegistry: main',
-    'resolver:',
-    '  enabled: true',
     // The accelerated scenario asks the server to resolve against this
     // address — its own un-proxied tar registry — so the resolver's metadata fetches
     // stay on loopback instead of crossing the emulated link and coming back
@@ -157,76 +270,17 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
     // registry is declared, so the address has to be listed as a route here.
     'routes:',
     '  public:',
-    `    - registry: ${tarRegistryUrl(`http://127.0.0.1:${port}`)}`,
-    'log:',
-    '  format: pretty',
-    `  level: ${logLevel}`,
+    `    - registry: ${tarRegistryUrl(url)}`,
     '',
   ].join('\n'))
-
-  // pnpr's output goes to a file rather than a pipe. Installs are measured with
-  // a synchronous spawn, so nothing in this process drains a pipe while one is
-  // running: the buffer would fill, pnpr would block writing to it, and the
-  // registry would stop answering midway through a scenario.
-  const logPath = path.join(dir, 'pnpr.log')
-  const logFd = fs.openSync(logPath, 'a')
-  const proc = spawn('pnpr', [
-    '-c', configPath,
-    '--listen', `127.0.0.1:${port}`,
-    // pnpr rewrites the tarball URLs it serves to this address. It has to be
-    // the address clients actually use, or every tarball would be fetched on a
-    // link the benchmark isn't emulating — and npm refuses outright to fetch a
-    // tarball from a host other than the registry it was told about.
-    ...(publicUrl ? ['--public-url', publicUrl] : []),
-    // Packuments are fetched from npmjs once and then treated as authoritative,
-    // so no scenario pays for a revalidation another scenario already paid for.
-    '--packument-ttl', '365d',
-  ], {
+  const result = spawn.sync('pnpr', ['-c', configPath, 'registries', 'import', registriesPath], {
     cwd: managersDir,
     env: createEnv(managersDir),
-    stdio: ['ignore', logFd, logFd],
+    encoding: 'utf8',
   })
-  fs.closeSync(logFd)
-  proc.on('error', (err) => {
-    throw err
-  })
-
-  const readLog = () => {
-    try {
-      return fs.readFileSync(logPath, 'utf8')
-    } catch {
-      return ''
-    }
-  }
-
-  let exit = null
-  proc.on('exit', (code, signal) => {
-    exit = { code, signal }
-  })
-
-  const url = `http://127.0.0.1:${port}`
-  await waitForPnpr(url, proc, readLog)
-  return {
-    url,
-    log: readLog,
-    /** A registry that died mid-run makes everything measured after it worthless. */
-    assertAlive: () => {
-      if (!exit) return
-      throw new Error(
-        `pnpr exited (code ${exit.code}, signal ${exit.signal}). Its log:\n${readLog().slice(-4000)}`
-      )
-    },
-    // A registry that outlives its run is what made the second benchmark of a
-    // job fail: it held the port, answered the next run's health check, and
-    // served tarball URLs pointing at a proxy that no longer existed. Make sure
-    // it is gone rather than merely asked to leave.
-    stop: () => {
-      if (exit) return
-      proc.kill()
-      setTimeout(() => {
-        if (!exit) proc.kill('SIGKILL')
-      }, 2_000).unref()
-    },
+  if (result.error) throw result.error
+  if (result.status !== 0) {
+    throw new Error(`Importing the pnpr registries failed with status code ${result.status}. ${result.stderr}${result.stdout}`)
   }
 }
 
@@ -267,7 +321,9 @@ async function waitForPnpr (url, proc, getStderr) {
 
 /**
  * pnpr serves packages anonymously but requires authentication to resolve, so
- * the accelerated scenario needs a token.
+ * the accelerated scenario needs a token. On a storage that already holds the
+ * account — one `populatePnprCache.js` filled — the same request signs in
+ * instead of registering.
  */
 export async function mintToken (url) {
   const res = await fetch(`${url}/-/user/org.couchdb.user:${USERNAME}`, {

@@ -7,7 +7,7 @@ import tempy from 'tempy'
 
 import { cmdsMap } from './commandsMap.js'
 import { fixtureNames } from './fixtures.js'
-import { installPnpr, npmRegistryUrl, populateCache, reservePort, startPnpr, tarRegistryUrl } from './pnprServer.js'
+import { installPnpr, npmRegistryUrl, PNPR_HOST, populateCache, reservePort, startPnpr, tarRegistryUrl } from './pnprServer.js'
 import { bootstrapInstaller, provisionPnpm12 } from './setupPackageManagers.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -52,7 +52,7 @@ async function run () {
   installPnpr(managersDirs.pnpr)
 
   const dir = path.join(managersDirs.pnpr, 'server')
-  const port = await reservePort()
+  const port = await reservePort(PNPR_HOST)
   const server = await startPnpr({ managersDir: managersDirs.pnpr, dir, port })
   try {
     for (const fixtureName of fixtureNames) {
