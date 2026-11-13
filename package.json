@@ -10,9 +10,10 @@
     "license": "MIT",
     "scripts": {
         "benchmark": "node ./index.js",
+        "benchmark:conflicts": "node ./benchmarkLockfileConflicts.js",
         "report": "node ./index.js --report-only",
         "merge-results": "node ./mergeResults.js",
-        "test": "node --test latencyProxy.test.mjs pnprServer.test.mjs",
+        "test": "node --test latencyProxy.test.mjs pnprServer.test.mjs benchmarkLockfileConflicts.test.mjs",
         "lint": "eslint .",
         "populate-cache": "node ./populatePnprCache.js"
     },
