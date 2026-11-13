@@ -5,6 +5,8 @@ import path from 'node:path'
 import spawn from 'cross-spawn'
 import pathKey from 'path-key'
 
+import { yamlText } from './benchmarkFixture.js'
+
 /**
  * pnpm 12 installs the other package managers natively: `pnpm add --global`
  * resolves npm, Yarn, and Bun through their trusted release channels and
@@ -37,7 +39,7 @@ export function bootstrapInstaller (setupDir) {
   // benchmark exists to measure the newest release, not the newest mature one.
   fs.writeFileSync(
     path.join(setupDir, 'pnpm-workspace.yaml'),
-    'packages:\n  - "."\nminimumReleaseAge: 0\n',
+    yamlText({ packages: ['.'], minimumReleaseAge: 0 }),
     'utf8'
   )
   // pnpm 12 ships its Rust binary via an install script, so the build must be

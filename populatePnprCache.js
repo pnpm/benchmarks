@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import tempy from 'tempy'
 
+import { yamlText } from './benchmarkFixture.js'
 import { cmdsMap } from './commandsMap.js'
 import { fixtureNames } from './fixtures.js'
 import { installPnpr, npmRegistryUrl, PNPR_HOST, populateCache, reservePort, startPnpr, tarRegistryUrl } from './pnprServer.js'
@@ -42,7 +43,7 @@ async function run () {
   for (const dir of Object.values(managersDirs)) {
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'package.json'), '{}', 'utf8')
-    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), "packages:\n  - '.'\nminimumReleaseAge: 0\n", 'utf8')
+    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), yamlText({ packages: ['.'], minimumReleaseAge: 0 }), 'utf8')
   }
   // Only the client the populate pass installs with, not the whole set the
   // benchmark measures: nothing here is timed, so the other managers would

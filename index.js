@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import rimraf from 'rimraf'
 import tempy from 'tempy'
 
+import { yamlText } from './benchmarkFixture.js'
 import {
   benchmarkNodeVersions,
   cloneNvm,
@@ -209,7 +210,7 @@ async function measure () {
     // The benchmark exists to measure the latest of everything, so the hold
     // is turned off where the managers are installed. The yaml is what the
     // Rust engine reads reliably — its `.npmrc`/`--config` parsing differs.
-    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), "packages:\n  - '.'\nminimumReleaseAge: 0\n", 'utf8')
+    fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), yamlText({ packages: ['.'], minimumReleaseAge: 0 }), 'utf8')
   }
   // pnpm 12 installs the other package managers natively, so one bootstrapped
   // installer provisions everything the benchmark measures.

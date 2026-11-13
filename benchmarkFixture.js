@@ -222,30 +222,37 @@ async function writeRegistryConfig (pm, cwd, opts) {
  * installs from one (see `tarRegistryUrl` in `pnprServer.js`).
  */
 export function pnpmWorkspaceYaml (opts = {}) {
-  let yaml = "packages:\n  - '.'\ntrustLockfile: true\n"
-  if (opts.pnprServer) {
-    yaml += `pnprServer: ${opts.pnprServer}\n`
-  }
-  if (opts.tarRegistries?.length) {
-    yaml += 'registries:\n'
-    opts.tarRegistries.forEach((url, i) => {
-      yaml += `  ${url}:\n`
-      // The first is the one the project installs from, so the default
-      // scope routes to it; any other is the same registry under another
-      // address, declared so the resolver knows what it serves too.
-      if (i === 0) yaml += "    scopes: ['@']\n"
-      // A tar registry's metadata names no tarball URL: the client rebuilds
-      // it from pnpr's layout.
-      yaml += '    serverType: pnpr\n'
-      // pnpr's abbreviated metadata carries `time`, so the release-age
-      // check reads it rather than every package's full metadata.
-      yaml += '    supportsTimeField: true\n'
-    })
-  }
-  for (const [key, value] of Object.entries(opts.settings ?? {})) {
-    yaml += `${key}: ${value}\n`
-  }
-  return yaml
+  return yamlText({
+    packages: ['.'],
+    trustLockfile: true,
+    ...(opts.pnprServer ? { pnprServer: opts.pnprServer } : {}),
+    ...(opts.tarRegistries?.length
+      ? {
+        registries: Object.fromEntries(opts.tarRegistries.map((url, i) => [url, {
+          // The first is the one the project installs from, so the default
+          // scope routes to it; any other is the same registry under another
+          // address, declared so the resolver knows what it serves too.
+          ...(i === 0 ? { scopes: ['@'] } : {}),
+          // A tar registry's metadata names no tarball URL: the client rebuilds
+          // it from pnpr's layout.
+          serverType: 'pnpr',
+          // pnpr's abbreviated metadata carries `time`, so the release-age
+          // check reads it rather than every package's full metadata.
+          supportsTimeField: true,
+        }])),
+      }
+      : {}),
+    ...opts.settings,
+  })
+}
+
+/**
+ * Serializes a config file that is read as YAML. JSON is valid YAML, and
+ * `JSON.stringify` quotes and escapes every value correctly, which
+ * hand-written YAML does only for values that happen not to need it.
+ */
+export function yamlText (value) {
+  return `${JSON.stringify(value, null, 2)}\n`
 }
 
 /**
@@ -298,26 +305,29 @@ export async function benchmark (pm, fixture, opts) {
     // stopped being enough once Yarn started caching globally by default:
     // without `enableGlobalCache`, packages land in `globalFolder` instead and
     // survive every scenario, so no run ever measures a cold cache.
-    let yarnRc =
-      'enableImmutableInstalls: false\n'
-    + 'enableGlobalCache: false\n'
-    + 'enableMirror: false\n'
-    + `cacheFolder: ${path.join(cwd, 'cache')}\n`
-    + `globalFolder: ${path.join(cwd, 'cache', 'global')}\n`
-    + 'enableScripts: false\n'
-    // Yarn reads none of `.npmrc`, so its registry has to be set here.
-    + (opts.registry ? `npmRegistryServer: ${opts.registry}\nunsafeHttpWhitelist:\n  - 127.0.0.1\n` : '')
+    const yarnRc = {
+      enableImmutableInstalls: false,
+      enableGlobalCache: false,
+      enableMirror: false,
+      cacheFolder: path.join(cwd, 'cache'),
+      globalFolder: path.join(cwd, 'cache', 'global'),
+      enableScripts: false,
+      // Yarn reads none of `.npmrc`, so its registry has to be set here.
+      ...(opts.registry ? { npmRegistryServer: opts.registry, unsafeHttpWhitelist: ['127.0.0.1'] } : {}),
+    }
     /**
      * @see https://yarnpkg.com/configuration/yarnrc#nodeLinker
      */
     switch (pm.scenario) {
       case 'yarn':
-        yarnRc += 'nodeLinker: pnpm\n'
-                + 'nmMode: hardlinks-local\n'
-                + 'compressionLevel: 0\n'
+        Object.assign(yarnRc, {
+          nodeLinker: 'pnpm',
+          nmMode: 'hardlinks-local',
+          compressionLevel: 0,
+        })
         break
     }
-    await fs.writeFile(path.join(cwd, '.yarnrc.yml'), yarnRc)
+    await fs.writeFile(path.join(cwd, '.yarnrc.yml'), yamlText(yarnRc))
   }
 
   // Installs that nothing is measured from, to keep whatever only the very
