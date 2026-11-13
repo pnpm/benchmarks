@@ -143,7 +143,7 @@ function pump (src, dst, profile, link) {
   return { flushed: () => queue }
 }
 
-function listen ({ upstreamPort, roundTripMs, rateLimit, slowStart }) {
+function listen ({ upstreamHost, upstreamPort, roundTripMs, rateLimit, slowStart }) {
   // The profile is one-way; a round trip pays it twice.
   const profile = { oneWayMs: roundTripMs / 2, rateLimit, slowStart }
   // One pacing point per direction for the whole proxy: the earliest moment
@@ -157,7 +157,7 @@ function listen ({ upstreamPort, roundTripMs, rateLimit, slowStart }) {
   // finish would close its peer's write side before the chunks still waiting on
   // the link had been handed over.
   const server = net.createServer({ allowHalfOpen: true }, (client) => {
-    const upstream = net.connect({ host: '127.0.0.1', port: upstreamPort, allowHalfOpen: true })
+    const upstream = net.connect({ host: upstreamHost, port: upstreamPort, allowHalfOpen: true })
     upstream.on('error', () => client.destroy())
     client.on('error', () => upstream.destroy())
     const toUpstream = pump(client, upstream, profile, uplink)
@@ -199,13 +199,14 @@ function listen ({ upstreamPort, roundTripMs, rateLimit, slowStart }) {
  * manager runs — a proxy living here would accept no connection until the very
  * install it is supposed to be serving had already finished.
  */
-export async function startLatencyProxy ({ upstreamPort, roundTripMs, rateLimit = null, slowStart = false, logPath }) {
+export async function startLatencyProxy ({ upstreamHost = '127.0.0.1', upstreamPort, roundTripMs, rateLimit = null, slowStart = false, logPath }) {
   // Like pnpr, the proxy writes to a file instead of a pipe: nothing here
   // drains a pipe while a measured install holds the event loop, so a full
   // buffer would block the very process the traffic flows through.
   const logFd = fs.openSync(logPath, 'a')
   const proc = spawn(process.execPath, [
     path.join(DIRNAME, 'latencyProxy.js'),
+    `--upstream-host=${upstreamHost}`,
     `--upstream-port=${upstreamPort}`,
     `--round-trip-ms=${roundTripMs}`,
     `--rate-limit=${rateLimit ?? 0}`,
@@ -268,9 +269,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   process.on('unhandledRejection', (err) => {
     console.error(`latency proxy: unhandled rejection: ${err?.stack ?? err}`)
   })
-  const arg = (name) => Number(process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1] ?? 0)
+  const option = (name) => process.argv.find((value) => value.startsWith(`--${name}=`))?.split('=')[1]
+  const arg = (name) => Number(option(name) ?? 0)
   const rateLimit = arg('rate-limit')
   const server = listen({
+    upstreamHost: option('upstream-host') ?? '127.0.0.1',
     upstreamPort: arg('upstream-port'),
     roundTripMs: arg('round-trip-ms'),
     rateLimit: rateLimit > 0 ? rateLimit : null,

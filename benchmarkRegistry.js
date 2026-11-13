@@ -9,6 +9,7 @@ import {
   installPnpr,
   mintToken,
   npmRegistryUrl,
+  PNPR_HOST,
   pnprVersion,
   populateCache,
   reservePort,
@@ -97,8 +98,9 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     // A port the system says is free, rather than a fixed one: a fixed port is
     // still held by the pnpr of an earlier run in the same job, and that older
     // server answers for it.
-    const pnprPort = await reservePort()
+    const pnprPort = await reservePort(PNPR_HOST)
     const registryLink = await startLatencyProxy({
+      upstreamHost: PNPR_HOST,
       upstreamPort: pnprPort,
       roundTripMs: ROUND_TRIP_MS,
       rateLimit: mbpsToBytesPerSec(BANDWIDTH_MBPS),
@@ -115,6 +117,7 @@ export async function startBenchmarkRegistry ({ managersDirs, fixtureNames }) {
     // Only latency is emulated here: the resolve exchange is small, so what it
     // costs is round trips rather than throughput.
     const resolverLink = await startLatencyProxy({
+      upstreamHost: PNPR_HOST,
       upstreamPort: pnprPort,
       roundTripMs: ROUND_TRIP_MS,
       logPath: path.join(dir, 'resolver-link.log'),
