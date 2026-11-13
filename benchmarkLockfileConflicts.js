@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import spawn from 'cross-spawn'
 
+import { yamlText } from './benchmarkFixture.js'
 import { lockfileConflictScenarios } from './lockfileConflictScenarios.js'
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url))
@@ -115,11 +116,13 @@ export function writeProjectState (dir, state, { clean = true } = {}) {
  * Writes `pnpm-workspace.yaml` with workspace globs and optional `lockfile.format: v13`.
  */
 function writePnpmWorkspaceYaml (dir, state, isV13) {
-  const lines = state.workspaces ? ['packages:', '  - packages/*'] : []
-  if (isV13) lines.push('lockfile:', '  format: v13')
+  const workspace = {
+    ...(state.workspaces ? { packages: ['packages/*'] } : {}),
+    ...(isV13 ? { lockfile: { format: 'v13' } } : {}),
+  }
   const wsYamlPath = path.join(dir, 'pnpm-workspace.yaml')
-  if (lines.length > 0) {
-    fs.writeFileSync(wsYamlPath, `${lines.join('\n')}\n`)
+  if (Object.keys(workspace).length > 0) {
+    fs.writeFileSync(wsYamlPath, yamlText(workspace))
   } else {
     fs.rmSync(wsYamlPath, { force: true })
   }

@@ -8,7 +8,7 @@ import path from 'node:path'
 import spawn from 'cross-spawn'
 import { loadYamlFileSync } from 'load-yaml-file'
 
-import { applyPnprServerRegistry, createEnv, pnpmWorkspaceYaml, UPDATED_DEPENDENCIES } from './benchmarkFixture.js'
+import { applyPnprServerRegistry, createEnv, pnpmWorkspaceYaml, UPDATED_DEPENDENCIES, yamlText } from './benchmarkFixture.js'
 
 /**
  * Takes a port the operating system says is free.
@@ -119,43 +119,42 @@ export function pnprVersion (managersDir) {
 export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel = 'error' }) {
   fs.mkdirSync(dir, { recursive: true })
   const configPath = path.join(dir, 'pnpr.yaml')
-  fs.writeFileSync(configPath, [
-    `listen: ${PNPR_HOST}:${port}`,
+  fs.writeFileSync(configPath, yamlText({
+    listen: `${PNPR_HOST}:${port}`,
     // pnpr rewrites the tarball URLs it serves to this address. It has to be
     // the address clients actually use, or every tarball would be fetched on a
     // link the benchmark isn't emulating — and npm refuses outright to fetch a
     // tarball from a host other than the registry it was told about. Set here
     // rather than on the command line because the registries import below
     // checks its routes against it too.
-    ...(publicUrl ? [`publicUrl: ${publicUrl}`] : []),
+    ...(publicUrl ? { publicUrl } : {}),
     // Accounts and the registries live in the database, which pnpr keeps
     // inside the storage directory and binds the storage to. A storage
     // `populatePnprCache.js` filled therefore arrives with the populate run's
     // account and registries: the account is signed in to again (see
     // `mintToken`) and the registries are replaced below.
-    `storage: ${path.join(dir, 'storage')}`,
+    storage: path.join(dir, 'storage'),
     // Upstream content is cached under keys derived from this, and pnpr
     // refuses to reuse a cache directory without one. The benchmark hands
     // every run the storage `populatePnprCache.js` filled, so it has to be
     // the same in all of them. Nothing here is secret: the server only ever
     // listens on loopback.
-    'secret: pnpm-benchmarks-pnpr-cache-secret',
-    'auth:',
-    '  users:',
-    // The benchmark registers its own resolver user on startup.
-    '    maxUsers: 1',
-    'resolver:',
-    '  enabled: true',
-    'routes:',
-    // The tar registry the accelerated scenario resolves against is this
-    // server's own, at its un-proxied address (see `applyPnprServerRegistry`),
-    // and the resolver refuses loopback addresses that are not listed here.
-    '  allowedPrivateNetworks: [127.0.0.0/8]',
-    'log:',
-    '  format: pretty',
-    `  level: ${logLevel}`,
-    '',
-  ].join('\n'))
+    secret: 'pnpm-benchmarks-pnpr-cache-secret',
+    auth: {
+      users: {
+        // The benchmark registers its own resolver user on startup.
+        maxUsers: 1,
+      },
+    },
+    resolver: { enabled: true },
+    routes: {
+      // The tar registry the accelerated scenario resolves against is this
+      // server's own, at its un-proxied address (see `applyPnprServerRegistry`),
+      // and the resolver refuses loopback addresses that are not listed here.
+      allowedPrivateNetworks: ['127.0.0.0/8'],
+    },
+    log: { format: 'pretty', level: logLevel },
+  }))
   const url = `http://${PNPR_HOST}:${port}`
   importRegistries({ managersDir, dir, configPath, url })
 
@@ -225,54 +224,57 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
  */
 function importRegistries ({ managersDir, dir, configPath, url }) {
   const registriesPath = path.join(dir, 'registries.yaml')
-  fs.writeFileSync(registriesPath, [
-    'registries:',
-    // The public npm registry. No `packages:` map, so it claims every
-    // name — the catch-all, and therefore last in the router's sources.
-    '  npmjs:',
-    '    type: upstream',
-    '    url: https://registry.npmjs.org/',
-    '    public: true',
-    // Bit publishes to a registry of its own, and `alotta-packages`
-    // depends on it. Declaring the scopes it serves is all the routing
-    // that is needed: every manager keeps installing from the one
-    // registry URL the benchmark hands it, and the names below are the
-    // only ones fetched from bit. Tarball URLs come back rewritten to
-    // pnpr's own address, so bit's packages cross the emulated link
-    // like every other package.
-    '  bit:',
-    '    type: upstream',
-    `    url: ${BIT_REGISTRY}`,
-    '    public: true',
-    '    packages:',
-    ...BIT_SCOPES.map((scope) => `      '${scope}/*':`),
-    // One URL in front of both: a router resolves a name to the first
-    // source whose declared packages claim it. `defaultRegistry` has to
-    // name *this* rather than a concrete registry — a concrete one
-    // resolves only its own namespace and answers `Unclaimed` for
-    // everything else, with no fall-through to a sibling.
-    '  main:',
-    '    type: router',
-    '    sources: [bit, npmjs]',
-    // The same sources again, served as tars rather than `.tgz` files (see
-    // `tarRegistryUrl`). One storage behind both: a package pulled through
-    // either is cached once.
-    `  ${TAR_REGISTRY}:`,
-    '    type: router',
-    '    sources: [bit, npmjs]',
-    '    tarballs: tar',
-    'defaultRegistry: main',
-    // The accelerated scenario asks the server to resolve against this
-    // address — its own un-proxied tar registry — so the resolver's metadata fetches
-    // stay on loopback instead of crossing the emulated link and coming back
-    // in through the front door (see `applyPnprServerRegistry`). The server
-    // resolves against whatever registry the client sends but only if that
-    // registry is declared, so the address has to be listed as a route here.
-    'routes:',
-    '  public:',
-    `    - registry: ${tarRegistryUrl(url)}`,
-    '',
-  ].join('\n'))
+  fs.writeFileSync(registriesPath, yamlText({
+    registries: {
+      // The public npm registry. No `packages:` map, so it claims every
+      // name — the catch-all, and therefore last in the router's sources.
+      npmjs: {
+        type: 'upstream',
+        url: 'https://registry.npmjs.org/',
+        public: true,
+      },
+      // Bit publishes to a registry of its own, and `alotta-packages`
+      // depends on it. Declaring the scopes it serves is all the routing
+      // that is needed: every manager keeps installing from the one
+      // registry URL the benchmark hands it, and the names below are the
+      // only ones fetched from bit. Tarball URLs come back rewritten to
+      // pnpr's own address, so bit's packages cross the emulated link
+      // like every other package.
+      bit: {
+        type: 'upstream',
+        url: BIT_REGISTRY,
+        public: true,
+        packages: Object.fromEntries(BIT_SCOPES.map((scope) => [`${scope}/*`, null])),
+      },
+      // One URL in front of both: a router resolves a name to the first
+      // source whose declared packages claim it. `defaultRegistry` has to
+      // name *this* rather than a concrete registry — a concrete one
+      // resolves only its own namespace and answers `Unclaimed` for
+      // everything else, with no fall-through to a sibling.
+      main: {
+        type: 'router',
+        sources: ['bit', 'npmjs'],
+      },
+      // The same sources again, served as tars rather than `.tgz` files (see
+      // `tarRegistryUrl`). One storage behind both: a package pulled through
+      // either is cached once.
+      [TAR_REGISTRY]: {
+        type: 'router',
+        sources: ['bit', 'npmjs'],
+        tarballs: 'tar',
+      },
+    },
+    defaultRegistry: 'main',
+    routes: {
+      // The accelerated scenario asks the server to resolve against this
+      // address — its own un-proxied tar registry — so the resolver's metadata fetches
+      // stay on loopback instead of crossing the emulated link and coming back
+      // in through the front door (see `applyPnprServerRegistry`). The server
+      // resolves against whatever registry the client sends but only if that
+      // registry is declared, so the address has to be listed as a route here.
+      public: [{ registry: tarRegistryUrl(url) }],
+    },
+  }))
   const result = spawn.sync('pnpr', ['-c', configPath, 'registries', 'import', registriesPath], {
     cwd: managersDir,
     env: createEnv(managersDir),
