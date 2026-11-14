@@ -172,6 +172,9 @@ importers:
       get-folder-size:
         specifier: ^3.1.0
         version: 3.1.0
+      js-yaml:
+        specifier: ^4.3.2
+        version: 4.3.2
       load-yaml-file:
         specifier: ^1.0.0
         version: 1.0.0

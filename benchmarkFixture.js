@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 import spawn from 'cross-spawn'
 import getFolderSize from 'get-folder-size'
+import YAML from 'js-yaml'
 import pathKey from 'path-key'
 import rimraf from 'rimraf'
 import tempy from 'tempy'
@@ -247,12 +248,18 @@ export function pnpmWorkspaceYaml (opts = {}) {
 }
 
 /**
- * Serializes a config file that is read as YAML. JSON is valid YAML, and
- * `JSON.stringify` quotes and escapes every value correctly, which
- * hand-written YAML does only for values that happen not to need it.
+ * Serializes a config file that is read as YAML. A serializer quotes and
+ * escapes every value correctly, which hand-written YAML does only for values
+ * that happen not to need it.
+ *
+ * The output must be block-style YAML, not JSON: pnpm edits
+ * `pnpm-workspace.yaml` in place (`--allow-build` records `allowBuilds`
+ * there), and it refuses to edit a document that is a multi-line flow
+ * collection. `noRefs` keeps shared objects from being written as aliases,
+ * which pnpm cannot edit either.
  */
 export function yamlText (value) {
-  return `${JSON.stringify(value, null, 2)}\n`
+  return YAML.dump(value, { noRefs: true })
 }
 
 /**
