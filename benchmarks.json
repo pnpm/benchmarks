@@ -1,5 +1,5 @@
 {
-  "measuredAt": "2026-11-26T16:18:04.583Z",
+  "measuredAt": "2026-11-26T18:40:15.502Z",
   "node": "v24.22.3",
   "pnpr": "0.1.0-alpha.22",
   "network": {
@@ -44,11 +44,11 @@
             "firstInstall": 4106,
             "withWarmModules": 65,
             "withLockfile": 3099,
-            "withWarmCacheAndModules": 56,
+            "withWarmCacheAndModules": 44,
             "withWarmCache": 643,
             "withWarmCacheAndLockfile": 393,
-            "withWarmModulesAndLockfile": 23,
-            "repeatInstall": 18,
+            "withWarmModulesAndLockfile": 17,
+            "repeatInstall": 17,
             "updatedDependencies": 799
           }
         },
@@ -75,7 +75,7 @@
             "withWarmCacheAndModules": 43,
             "withWarmCache": 687,
             "withWarmCacheAndLockfile": 405,
-            "withWarmModulesAndLockfile": 20,
+            "withWarmModulesAndLockfile": 19,
             "repeatInstall": 17,
             "updatedDependencies": 955
           }
@@ -89,7 +89,7 @@
             "withWarmCacheAndModules": 44,
             "withWarmCache": 462,
             "withWarmCacheAndLockfile": 434,
-            "withWarmModulesAndLockfile": 21,
+            "withWarmModulesAndLockfile": 19,
             "repeatInstall": 16,
             "updatedDependencies": 753
           }
@@ -203,10 +203,10 @@
             "firstInstall": 6628,
             "withWarmModules": 80,
             "withLockfile": 6368,
-            "withWarmCacheAndModules": 107,
+            "withWarmCacheAndModules": 80,
             "withWarmCache": 1010,
             "withWarmCacheAndLockfile": 990,
-            "withWarmModulesAndLockfile": 132,
+            "withWarmModulesAndLockfile": 18,
             "repeatInstall": 18,
             "updatedDependencies": 1363
           }
@@ -264,7 +264,7 @@
             "firstInstall": 21906,
             "withWarmModules": 101,
             "withLockfile": 8304,
-            "withWarmCacheAndModules": 128,
+            "withWarmCacheAndModules": 102,
             "withWarmCache": 3922,
             "withWarmCacheAndLockfile": 1400,
             "withWarmModulesAndLockfile": 20,
@@ -292,7 +292,7 @@
             "firstInstall": 21978,
             "withWarmModules": 179,
             "withLockfile": 10032,
-            "withWarmCacheAndModules": 118,
+            "withWarmCacheAndModules": 106,
             "withWarmCache": 4353,
             "withWarmCacheAndLockfile": 1332,
             "withWarmModulesAndLockfile": 22,
@@ -324,7 +324,7 @@
             "withWarmCache": 3647,
             "withWarmCacheAndLockfile": 3132,
             "withWarmModulesAndLockfile": 109,
-            "repeatInstall": 156,
+            "repeatInstall": 142,
             "updatedDependencies": 69817
           }
         }
