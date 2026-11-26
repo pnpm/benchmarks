@@ -146,13 +146,6 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
         maxUsers: 1,
       },
     },
-    // Upstream metadata cached by `populatePnprCache.js` is treated as fresh
-    // for the whole run. With pnpr's default of five minutes, a fixture
-    // measured an hour after the populate pass has every packument expired,
-    // and the resolver revalidates each one against npmjs in the middle of a
-    // resolve — timing the public registry rather than pnpr, and only in the
-    // one column that resolves on the server.
-    packumentTtl: '1d',
     // pnpr's default of one minute bounds a whole streamed resolve, which a
     // graph as large as `bit-cli`'s comes within a second of on a CI runner,
     // failing the run with `ERR_PNPR_RESOLVE_TIMEOUT` whenever it goes over.
