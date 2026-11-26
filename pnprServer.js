@@ -146,6 +146,10 @@ export async function startPnpr ({ managersDir, dir, port, publicUrl, logLevel =
         maxUsers: 1,
       },
     },
+    // pnpr's default of one minute bounds a whole streamed resolve, which a
+    // graph as large as `bit-cli`'s comes within a second of on a CI runner,
+    // failing the run with `ERR_PNPR_RESOLVE_TIMEOUT` whenever it goes over.
+    requestTimeout: '10m',
     resolver: { enabled: true },
     routes: {
       // The tar registry the accelerated scenario resolves against is this
